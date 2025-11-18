@@ -1,0 +1,5 @@
+{
+  "name": "FinControl WebApp",
+  "description": "A clean, responsive financial control web application for managing income, expenses, and balances with a light-themed, mobile-first design.",
+  "requestFramePermissions": []
+}
