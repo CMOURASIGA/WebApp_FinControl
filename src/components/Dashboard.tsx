@@ -4,9 +4,10 @@ import { transactionService } from '../services/transactionService';
 import { SummaryCards } from './SummaryCards';
 import { TransactionForm } from './TransactionForm';
 import { TransactionList } from './TransactionList';
+import { AnnualReport } from './AnnualReport';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { RefreshCw, Search, Filter, X } from 'lucide-react';
+import { RefreshCw, Search, Filter, X, TableProperties } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const Dashboard: React.FC = () => {
@@ -15,6 +16,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   
   // Filters
   const [filters, setFilters] = useState<FilterState>({
@@ -145,15 +147,36 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
+      <AnnualReport 
+        isOpen={isReportOpen} 
+        onClose={() => setIsReportOpen(false)} 
+        transactions={transactions} 
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-2xl font-bold text-slate-800">Painel Financeiro</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Painel Financeiro</h1>
+          </div>
           
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+             {/* Report Button */}
+             <Button 
+              onClick={() => setIsReportOpen(true)} 
+              variant="secondary" 
+              className="flex items-center gap-2"
+              title="Ver Relatório Anual"
+            >
+              <TableProperties className="w-4 h-4 text-blue-600" />
+              <span className="hidden sm:inline">Relatório Anual</span>
+            </Button>
+
+            <div className="h-6 w-px bg-slate-300 mx-1 hidden md:block"></div>
+
             <input 
               type="month" 
-              className="border border-slate-300 rounded-md px-3 py-2 text-sm bg-white w-full md:w-auto"
+              className="border border-slate-300 rounded-md px-3 py-2 text-sm bg-white w-full sm:w-auto"
               value={currentMonth}
               onChange={(e) => setCurrentMonth(e.target.value)}
             />
