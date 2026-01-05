@@ -1,5 +1,6 @@
+
 export type TransactionType = 'income' | 'expense';
-export type TransactionStatus = 'paid' | 'pending';
+export type TransactionStatus = 'paid' | 'pending' | 'reserved';
 
 export interface Transaction {
   id: string;
@@ -23,12 +24,14 @@ export interface FilterState {
 export interface SummaryStats {
   income: number;
   expensesPaid: number;
+  expensesReserved: number;
   expensesPending: number;
   balanceExpected: number;
   balanceRealized: number;
+  balanceAvailable: number;
 }
 
-export const CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   'Alimentação',
   'Moradia',
   'Transporte',

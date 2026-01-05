@@ -1,5 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
-import { Transaction, CATEGORIES } from '../types';
+// Fix: Removed CATEGORIES which is not exported from types.ts
+import { Transaction } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from './ui/Button';
