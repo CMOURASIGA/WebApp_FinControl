@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction, FilterState, SummaryStats, CATEGORIES } from '../types';
 import { transactionService } from '../services/transactionService';
@@ -5,9 +6,10 @@ import { SummaryCards } from './SummaryCards';
 import { TransactionForm } from './TransactionForm';
 import { TransactionList } from './TransactionList';
 import { AnnualReport } from './AnnualReport';
+import { UserGuide } from './UserGuide';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { RefreshCw, Search, Filter, X, TableProperties } from 'lucide-react';
+import { RefreshCw, Search, Filter, X, TableProperties, HelpCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const Dashboard: React.FC = () => {
@@ -17,6 +19,7 @@ export const Dashboard: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   
   // Filters
   const [filters, setFilters] = useState<FilterState>({
@@ -153,6 +156,11 @@ export const Dashboard: React.FC = () => {
         transactions={transactions} 
       />
 
+      <UserGuide 
+        isOpen={isGuideOpen} 
+        onClose={() => setIsGuideOpen(false)} 
+      />
+
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -161,6 +169,16 @@ export const Dashboard: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+             <Button 
+              onClick={() => setIsGuideOpen(true)} 
+              variant="ghost" 
+              size="sm"
+              className="text-slate-500 hover:text-blue-600"
+              title="Ajuda e Orientações"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </Button>
+
              {/* Report Button */}
              <Button 
               onClick={() => setIsReportOpen(true)} 
@@ -176,7 +194,7 @@ export const Dashboard: React.FC = () => {
 
             <input 
               type="month" 
-              className="border border-slate-300 rounded-md px-3 py-2 text-sm bg-white w-full sm:w-auto"
+              className="border border-slate-300 rounded-md px-3 py-2 text-sm bg-white w-full sm:w-auto font-medium"
               value={currentMonth}
               onChange={(e) => setCurrentMonth(e.target.value)}
             />
@@ -211,7 +229,7 @@ export const Dashboard: React.FC = () => {
               <div className={`space-y-4 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <select 
-                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full"
+                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full font-medium"
                     value={filters.type}
                     onChange={(e) => setFilters({...filters, type: e.target.value as any})}
                   >
@@ -221,7 +239,7 @@ export const Dashboard: React.FC = () => {
                   </select>
                   
                   <select 
-                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full"
+                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full font-medium"
                     value={filters.status}
                     onChange={(e) => setFilters({...filters, status: e.target.value as any})}
                   >
@@ -231,7 +249,7 @@ export const Dashboard: React.FC = () => {
                   </select>
 
                   <select 
-                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full"
+                    className="border border-slate-300 rounded-md px-3 py-2 text-sm w-full font-medium"
                     value={filters.category}
                     onChange={(e) => setFilters({...filters, category: e.target.value})}
                   >
@@ -262,7 +280,7 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                  <h2 className="text-lg font-bold text-slate-800">Transações</h2>
-                 <span className="text-sm text-slate-500">{filteredTransactions.length} registros</span>
+                 <span className="text-sm text-slate-500 font-medium">{filteredTransactions.length} registros</span>
               </div>
               <TransactionList 
                 transactions={filteredTransactions} 
@@ -287,24 +305,27 @@ export const Dashboard: React.FC = () => {
               {/* Chart (Only visible if data exists) */}
               {chartData.length > 0 && (
                 <Card className="p-4 mt-6 h-64 hidden lg:block">
-                  <h3 className="text-sm font-bold text-slate-600 mb-2 text-center">Resumo (Pagos)</h3>
+                  <h3 className="text-sm font-bold text-slate-600 mb-2 text-center uppercase tracking-wider">Resumo de Realizados</h3>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={chartData}
                         cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={5}
+                        cy="45%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={8}
                         dataKey="value"
                       >
                         {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)} />
-                      <Legend verticalAlign="bottom" height={36}/>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        formatter={(value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)} 
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
                 </Card>
