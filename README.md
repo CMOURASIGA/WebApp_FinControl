@@ -2,19 +2,96 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Consult Services — Finance 2027
 
-This contains everything you need to run your app locally.
+Sistema financeiro da Consult Services: tributação, custos diretos de projeto, despesas corporativas, distribuição de resultado entre sócios, conta corrente, investimentos/ROI, receita recorrente (MRR/ARR), simulador tributário e fechamento mensal com DRE gerencial.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1V_fn8xJtZpnOsB3upJgo5SkW9NvKPeTx
+Este projeto substitui o antigo protótipo de controle financeiro pessoal (localStorage, single-user) por uma reconstrução completa alinhada ao storytelling funcional "Consult Services Finance 2027" — a lógica de negócio está descrita em detalhe lá; este README cobre como rodar e como o código está organizado.
 
-## Run Locally
+## Duas regras de ouro (todo o desenho gira em torno delas)
 
-**Prerequisites:**  Node.js
+1. **Nenhum valor recebido é considerado disponível para distribuição** antes de passar por tributo, custo direto do projeto, despesa e reserva da empresa.
+2. **A distribuição é calculada por projeto**, conforme a regra de participação vigente daquele projeto — nunca sobre o faturamento consolidado da empresa.
 
+Consequência direta: **alíquota tributária, percentual de reserva da empresa, split entre sócios e meta pessoal nunca são constantes no código.** Vivem no banco como parâmetros configuráveis com vigência (`vigencia_inicio` / `vigencia_fim`) e podem ter escopo default (empresa) ou específico por projeto. Mudar um número é uma operação de configuração na tela **Parâmetros**, não um deploy.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Stack
+
+- **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS + React Router.
+- **Backend/dados**: Supabase (Postgres + Auth + Row Level Security). Não há backend próprio — o frontend fala direto com o Supabase usando a chave `anon` e RLS.
+- **Gestão de acesso**: 100% Supabase Auth. Cada usuário autenticado ganha automaticamente uma linha em `public.profiles` (trigger `handle_new_user`) — essa é a "tabela de usuários" que registra quem é sócio da operação.
+
+## Configurando o Supabase
+
+1. Crie um projeto em [supabase.com](https://supabase.com).
+2. No SQL Editor do projeto, rode o conteúdo de [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) (ou use `supabase db push` com a Supabase CLI, se preferir versionar as migrações localmente).
+3. Em **Project Settings → API**, copie a `Project URL` e a chave `anon public`.
+4. Copie `.env.example` para `.env.local` e preencha:
+   ```
+   VITE_SUPABASE_URL=...
+   VITE_SUPABASE_ANON_KEY=...
+   ```
+5. Em **Authentication → Providers**, deixe e-mail/senha habilitado (é o método usado pela tela de login). Se quiser pular a confirmação por e-mail em desenvolvimento, desative "Confirm email" nas configurações de Auth.
+
+## Rodando localmente
+
+```bash
+npm install
+npm run dev
+```
+
+## Primeiro acesso (bootstrap dos parâmetros)
+
+A migração cria as tabelas mas **não** popula `parametros_tributarios` / `regras_distribuicao` / `parametros_pessoais` com os valores 6% / 30% / 70% / 50/50 / R$ 15.000 — isso é proposital: essas linhas referenciam o `id` de sócios reais (`profiles`), que só existem depois do primeiro cadastro.
+
+Passo a passo:
+
+1. Cadastre-se na tela de login (isso cria seu `auth.users` + `profiles` automaticamente).
+2. Peça para o(s) outro(s) sócio(s) também se cadastrarem.
+3. Vá em **Parâmetros** e registre:
+   - a alíquota tributária vigente (referência inicial: 6%);
+   - a regra de distribuição default (referência inicial: 30% empresa / 70% dividido entre os sócios);
+   - a meta líquida mensal de cada sócio (referência inicial: R$ 15.000 para o Christian).
+
+A partir daí, toda receita lançada em **Projetos** grava automaticamente um snapshot desses parâmetros na data do fato gerador — mudar o parâmetro depois não altera receitas já lançadas nem fechamentos já encerrados.
+
+## Estrutura do banco (`supabase/migrations/0001_init.sql`)
+
+| Tabela | Papel |
+|---|---|
+| `profiles` | Sócios/usuários (1:1 com `auth.users`) |
+| `clientes`, `projetos` | Quem contrata, o que está sendo entregue e sua regra econômica |
+| `parametros_tributarios` | Alíquota vigente, com histórico |
+| `regras_distribuicao` | % empresa + split entre sócios, escopo default ou por projeto, com histórico |
+| `parametros_pessoais` | Meta líquida mensal por sócio, com histórico |
+| `receitas` | Cada entrada de caixa, com snapshot do tributo e da regra aplicados |
+| `custos_projeto` | Custo que pertence economicamente a um projeto |
+| `despesas` | Despesa corporativa (sem projeto) ou atribuída a um projeto |
+| `investimentos` | Aportes de sócio ou da empresa, por projeto |
+| `socio_lancamentos` | Conta corrente: créditos de resultado, retiradas, reserva pessoal |
+| `reserva_empresa_lancamentos` | Reserva da Consult Services |
+| `assinaturas` | Contratos recorrentes → alimenta MRR/ARR |
+| `fechamentos_mensais` | Snapshot imutável do mês fechado |
+
+RLS está habilitado em todas as tabelas: qualquer usuário autenticado com uma linha ativa em `profiles` pode ler e lançar dados (é uma operação de poucos sócios administrando o caixa em conjunto).
+
+## Estrutura do frontend
+
+```
+src/
+  lib/
+    supabaseClient.ts     # client do Supabase
+    motorCalculo.ts       # ÚNICO lugar que aplica a cascata receita→tributo→custo→despesa→resultado→distribuição
+  services/                # um arquivo por domínio, todos falando com o Supabase
+  contexts/AuthContext.tsx # sessão + profile do usuário logado
+  pages/                   # uma tela por módulo do menu
+  components/layout/       # AppLayout (sidebar) e ProtectedRoute
+```
+
+O `motorCalculo.ts` é o núcleo do sistema: resolve qual parâmetro vale em uma data (`resolveVigente`), monta o snapshot gravado em cada receita nova, calcula o resultado de um projeto (rateando custos/despesas entre as receitas e aplicando a regra de distribuição de cada uma) e roda o simulador tributário — tudo com os mesmos parâmetros passados por fora, nunca lidos de uma constante.
+
+## Escopo desta versão (MVP)
+
+Implementado: Dashboard executivo, Parâmetros Configuráveis, Projetos + Receitas + Custos diretos, Despesas/Contas a Pagar, Conta Corrente dos Sócios (+ reserva pessoal), Investimentos + ROI, Simulador Tributário, Fechamento Mensal + DRE gerencial, MRR/ARR.
+
+Deixado para uma fase seguinte (ver storytelling, seção "MVP"): financeiro pessoal detalhado por categoria de gasto, integrações bancárias automáticas, projeção de caixa de 12 meses, simulador de novo negócio com scoring automático, alertas proativos, reabertura de fechamento.
