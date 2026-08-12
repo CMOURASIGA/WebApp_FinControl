@@ -12,13 +12,7 @@ export type StatusTributo = 'provisionado' | 'pago';
 export type TipoDespesa = 'fixa' | 'variavel' | 'projeto' | 'tributo' | 'investimento';
 export type StatusDespesa = 'provisionado' | 'pago';
 export type InvestidorTipo = 'socio' | 'empresa';
-export type TipoLancamentoSocio =
-  | 'credito_resultado'
-  | 'retirada'
-  | 'reembolso'
-  | 'ajuste'
-  | 'reserva_aporte'
-  | 'reserva_uso';
+export type TipoLancamentoSocio = 'credito_resultado' | 'retirada' | 'reembolso' | 'ajuste';
 export type TipoLancamentoReserva = 'aporte' | 'uso';
 export type StatusAssinatura = 'ativa' | 'suspensa' | 'cancelada';
 export type StatusFechamento = 'aberto' | 'fechado';
@@ -32,6 +26,8 @@ export interface SplitSocio {
 export interface Profile {
   id: string;
   nome: string;
+  cpf: string | null;
+  chave_pix: string | null;
   papel: Papel;
   ativo: boolean;
   created_at: string;
@@ -81,17 +77,6 @@ export interface RegraDistribuicao {
   projeto_id: string | null;
   percentual_empresa: number;
   split_socios: SplitSocio[];
-  vigencia_inicio: string;
-  vigencia_fim: string | null;
-  observacao: string | null;
-  created_by: string | null;
-  created_at: string;
-}
-
-export interface ParametroPessoal {
-  id: string;
-  socio_id: string;
-  meta_liquida_mensal: number;
   vigencia_inicio: string;
   vigencia_fim: string | null;
   observacao: string | null;

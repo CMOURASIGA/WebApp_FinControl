@@ -1,12 +1,12 @@
-// Serviço de Parâmetros Configuráveis: tributação, regra de
-// distribuição (default e por projeto) e meta pessoal. Todos seguem o
-// mesmo padrão: nunca dá UPDATE no valor vigente — encerra a vigência
-// atual (vigencia_fim) e insere uma linha nova. Isso preserva o
-// histórico e garante que fechamentos passados não sejam recalculados
+// Serviço de Parâmetros Configuráveis: tributação e regra de
+// distribuição (default e por projeto). Ambos seguem o mesmo padrão:
+// nunca dá UPDATE no valor vigente — encerra a vigência atual
+// (vigencia_fim) e insere uma linha nova. Isso preserva o histórico e
+// garante que fechamentos passados não sejam recalculados
 // silenciosamente quando o parâmetro muda.
 
 import { supabase } from '../lib/supabaseClient';
-import type { ParametroPessoal, ParametroTributario, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { ParametroTributario, RegraDistribuicao, SplitSocio } from '../types/database';
 import { assertNoError } from './base';
 
 function diaAnterior(dataISO: string): string {
@@ -125,51 +125,5 @@ export const parametrosService = {
       .single();
 
     return assertNoError(data, error, 'definir nova regra de distribuição') as RegraDistribuicao;
-  },
-
-  // ---------------- Meta pessoal ----------------
-  async listarMetasPessoais(): Promise<ParametroPessoal[]> {
-    const { data, error } = await supabase
-      .from('parametros_pessoais')
-      .select('*')
-      .order('vigencia_inicio', { ascending: false });
-    return assertNoError(data, error, 'listar metas pessoais') as ParametroPessoal[];
-  },
-
-  async definirNovaMetaPessoal(input: {
-    socioId: string;
-    metaLiquidaMensal: number;
-    vigenciaInicio: string;
-    observacao?: string;
-    createdBy: string;
-  }): Promise<ParametroPessoal> {
-    const { data: atual } = await supabase
-      .from('parametros_pessoais')
-      .select('id')
-      .eq('socio_id', input.socioId)
-      .is('vigencia_fim', null)
-      .maybeSingle();
-
-    if (atual) {
-      await supabase
-        .from('parametros_pessoais')
-        .update({ vigencia_fim: diaAnterior(input.vigenciaInicio) })
-        .eq('id', atual.id);
-    }
-
-    const { data, error } = await supabase
-      .from('parametros_pessoais')
-      .insert({
-        socio_id: input.socioId,
-        meta_liquida_mensal: input.metaLiquidaMensal,
-        vigencia_inicio: input.vigenciaInicio,
-        vigencia_fim: null,
-        observacao: input.observacao ?? null,
-        created_by: input.createdBy,
-      })
-      .select('*')
-      .single();
-
-    return assertNoError(data, error, 'definir nova meta pessoal') as ParametroPessoal;
   },
 };

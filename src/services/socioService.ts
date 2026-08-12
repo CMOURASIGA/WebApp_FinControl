@@ -17,25 +17,12 @@ export const socioService = {
     return assertNoError(data, error, 'listar lançamentos dos sócios') as SocioLancamento[];
   },
 
-  /** Saldo da conta corrente = soma de créditos - retiradas/ajustes negativos. */
+  /** Saldo da conta corrente = créditos de resultado + reembolsos - retiradas - ajustes negativos. */
   calcularSaldo(lancamentos: SocioLancamento[]): number {
     return round2(
       lancamentos.reduce((acc, l) => {
-        const sinal = l.tipo === 'retirada' || l.tipo === 'reserva_aporte' ? -1 : 1;
-        // reserva_aporte tira da conta corrente disponível e manda para a reserva pessoal;
-        // reserva_uso devolve da reserva pessoal para a disponibilidade.
+        const sinal = l.tipo === 'retirada' ? -1 : 1;
         return acc + sinal * l.valor;
-      }, 0)
-    );
-  },
-
-  /** Saldo específico da reserva pessoal (aportes - usos). */
-  calcularSaldoReserva(lancamentos: SocioLancamento[]): number {
-    return round2(
-      lancamentos.reduce((acc, l) => {
-        if (l.tipo === 'reserva_aporte') return acc + l.valor;
-        if (l.tipo === 'reserva_uso') return acc - l.valor;
-        return acc;
       }, 0)
     );
   },
@@ -60,17 +47,6 @@ export const socioService = {
     createdBy: string;
   }): Promise<SocioLancamento> {
     return this.registrar({ ...input, tipo: 'retirada' });
-  },
-
-  async registrarReservaPessoal(input: {
-    socioId: string;
-    valor: number;
-    data: string;
-    uso: boolean; // true = puxa da reserva; false = aporta na reserva
-    descricao?: string;
-    createdBy: string;
-  }): Promise<SocioLancamento> {
-    return this.registrar({ ...input, tipo: input.uso ? 'reserva_uso' : 'reserva_aporte' });
   },
 
   async registrar(input: {

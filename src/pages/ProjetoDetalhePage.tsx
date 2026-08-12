@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
+import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { projetosService } from '../services/projetosService';
 import { receitasService } from '../services/receitasService';
@@ -119,7 +120,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   };
 
   // --- form: regra específica do projeto ---
-  const [percentualEmpresaProjeto, setPercentualEmpresaProjeto] = useState('30');
+  const [percentualEmpresaProjeto, setPercentualEmpresaProjeto] = useState(30);
   const [splitsProjeto, setSplitsProjeto] = useState<SplitSocio[]>([]);
   const [vigenciaRegraProjeto, setVigenciaRegraProjeto] = useState(hoje());
   const [mostrarFormRegra, setMostrarFormRegra] = useState(false);
@@ -131,9 +132,6 @@ export const ProjetoDetalhePage: React.FC = () => {
     }
   }, [socios]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const somaSplitsProjeto = splitsProjeto.reduce((acc, s) => acc + s.percentual, 0);
-  const totalRegraProjeto = Number(percentualEmpresaProjeto || 0) + somaSplitsProjeto;
-
   const salvarRegraProjeto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !id) return;
@@ -142,7 +140,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       await parametrosService.definirNovaRegraDistribuicao({
         escopo: 'projeto',
         projetoId: id,
-        percentualEmpresa: Number(percentualEmpresaProjeto),
+        percentualEmpresa: percentualEmpresaProjeto,
         splitSocios: splitsProjeto,
         vigenciaInicio: vigenciaRegraProjeto,
         createdBy: user.id,
@@ -205,36 +203,18 @@ export const ProjetoDetalhePage: React.FC = () => {
             {mostrarFormRegra ? 'Cancelar' : 'Definir regra específica para este projeto'}
           </button>
           {mostrarFormRegra && (
-            <form onSubmit={salvarRegraProjeto} className="mt-3 grid gap-3 sm:grid-cols-3">
-              <Field label="% empresa">
-                <Input type="number" step="0.01" value={percentualEmpresaProjeto} onChange={(e) => setPercentualEmpresaProjeto(e.target.value)} />
-              </Field>
-              {socios.map((s) => (
-                <Field key={s.id} label={`% ${s.nome}`}>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={splitsProjeto.find((sp) => sp.socio_id === s.id)?.percentual ?? ''}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setSplitsProjeto((prev) => {
-                        const copia = [...prev];
-                        const i = copia.findIndex((sp) => sp.socio_id === s.id);
-                        if (i >= 0) copia[i] = { ...copia[i], percentual: val };
-                        else copia.push({ socio_id: s.id, percentual: val });
-                        return copia;
-                      });
-                    }}
-                  />
-                </Field>
-              ))}
+            <form onSubmit={salvarRegraProjeto} className="mt-3 max-w-md space-y-3">
+              <SplitSociosEditor
+                socios={socios}
+                percentualEmpresa={percentualEmpresaProjeto}
+                onChangePercentualEmpresa={setPercentualEmpresaProjeto}
+                splits={splitsProjeto}
+                onChangeSplits={setSplitsProjeto}
+              />
               <Field label="Vigente a partir de">
                 <Input type="date" value={vigenciaRegraProjeto} onChange={(e) => setVigenciaRegraProjeto(e.target.value)} />
               </Field>
-              <p className={`text-xs sm:col-span-3 ${Math.abs(totalRegraProjeto - 100) > 0.01 ? 'text-red-600' : 'text-slate-500'}`}>
-                Soma atual: {totalRegraProjeto.toFixed(2)}% (precisa ser 100%)
-              </p>
-              <Button type="submit" size="sm" className="sm:col-span-3" disabled={Math.abs(totalRegraProjeto - 100) > 0.01}>
+              <Button type="submit" size="sm" disabled={!splitValido(percentualEmpresaProjeto, splitsProjeto)}>
                 Salvar regra do projeto
               </Button>
             </form>

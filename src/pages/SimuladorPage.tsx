@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Field, Input } from '../components/ui/Input';
+import { SplitSociosEditor } from '../components/SplitSociosEditor';
 import { profilesService } from '../services/profilesService';
 import { parametrosService } from '../services/parametrosService';
 import { resolveVigente, simularCenario } from '../lib/motorCalculo';
@@ -100,28 +101,13 @@ export const SimuladorPage: React.FC = () => {
           <Field label="Despesas atribuídas (R$)">
             <Input type="number" step="0.01" value={despesas} onChange={(e) => setDespesas(e.target.value)} />
           </Field>
-          <Field label="% retido pela empresa">
-            <Input type="number" step="0.01" value={percentualEmpresa} onChange={(e) => setPercentualEmpresa(Number(e.target.value))} />
-          </Field>
-          {socios.map((s) => (
-            <Field key={s.id} label={`% ${s.nome}`}>
-              <Input
-                type="number"
-                step="0.01"
-                value={splits.find((sp) => sp.socio_id === s.id)?.percentual ?? 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setSplits((prev) => {
-                    const copia = [...prev];
-                    const i = copia.findIndex((sp) => sp.socio_id === s.id);
-                    if (i >= 0) copia[i] = { ...copia[i], percentual: val };
-                    else copia.push({ socio_id: s.id, percentual: val });
-                    return copia;
-                  });
-                }}
-              />
-            </Field>
-          ))}
+          <SplitSociosEditor
+            socios={socios}
+            percentualEmpresa={percentualEmpresa}
+            onChangePercentualEmpresa={setPercentualEmpresa}
+            splits={splits}
+            onChangeSplits={setSplits}
+          />
         </Card>
 
         <Card className="p-6">

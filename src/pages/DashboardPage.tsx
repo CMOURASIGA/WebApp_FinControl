@@ -1,23 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
-import { Badge } from '../components/ui/Input';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
 import { assinaturasService } from '../services/assinaturasService';
 import { profilesService } from '../services/profilesService';
-import { parametrosService } from '../services/parametrosService';
-import { socioService } from '../services/socioService';
-import { reservaEmpresaService } from '../services/socioService';
-import { calcularARR, calcularMRR, calcularStatusMeta, resolveMetaPessoalVigente } from '../lib/motorCalculo';
+import { socioService, reservaEmpresaService } from '../services/socioService';
+import { calcularARR, calcularMRR } from '../lib/motorCalculo';
 import { formatCurrency, mesAtual, primeiroDiaDoMes, ultimoDiaDoMes, nomeDoMes, hoje } from '../utils/formatters';
-import type { Assinatura, ParametroPessoal, Profile, SocioLancamento } from '../types/database';
+import type { Assinatura, Profile, SocioLancamento } from '../types/database';
 
 export const DashboardPage: React.FC = () => {
   const [mes, setMes] = useState(mesAtual());
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [socios, setSocios] = useState<Profile[]>([]);
-  const [metas, setMetas] = useState<ParametroPessoal[]>([]);
   const [lancamentos, setLancamentos] = useState<SocioLancamento[]>([]);
   const [reservaEmpresa, setReservaEmpresa] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -35,16 +31,14 @@ export const DashboardPage: React.FC = () => {
       relatoriosService.montarDRE(inicio, fim),
       assinaturasService.listar(),
       profilesService.listarSocios(),
-      parametrosService.listarMetasPessoais(),
       socioService.listarTodos(),
       reservaEmpresaService.listar(),
     ])
-      .then(([dreData, assData, sociosData, metasData, lancData, reservaData]) => {
+      .then(([dreData, assData, sociosData, lancData, reservaData]) => {
         if (!ativo) return;
         setDre(dreData);
         setAssinaturas(assData);
         setSocios(sociosData);
-        setMetas(metasData);
         setLancamentos(lancData);
         setReservaEmpresa(reservaEmpresaService.calcularSaldo(reservaData));
       })
@@ -115,46 +109,23 @@ export const DashboardPage: React.FC = () => {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Sócios</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {socios.map((socio) => {
-            const meta = resolveMetaPessoalVigente(metas, socio.id, ultimoDiaDoMes(mes));
             const resultadoAtribuivel = dre.consolidadoProjetos.porSocio[socio.id] ?? 0;
             const lancamentosSocio = lancamentos.filter((l) => l.socio_id === socio.id);
             const recebidoNoMes = lancamentosSocio
               .filter((l) => l.tipo === 'retirada' && l.data >= primeiroDiaDoMes(mes) && l.data <= ultimoDiaDoMes(mes))
               .reduce((acc, l) => acc + l.valor, 0);
             const saldoConta = socioService.calcularSaldo(lancamentosSocio);
-            const reservaPessoal = socioService.calcularSaldoReserva(lancamentosSocio);
-            const status = meta ? calcularStatusMeta(meta.meta_liquida_mensal, resultadoAtribuivel) : null;
 
             return (
               <Card key={socio.id} className="p-5">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-slate-900">{socio.nome}</p>
-                  {status && (
-                    <Badge tone={status.atingida ? 'success' : 'danger'}>
-                      {status.atingida ? 'Meta atingida' : 'Abaixo da meta'}
-                    </Badge>
-                  )}
-                </div>
+                <p className="font-semibold text-slate-900">{socio.nome}</p>
                 <dl className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
-                  <dt className="text-slate-500">Meta mensal</dt>
-                  <dd className="text-right font-medium">{meta ? formatCurrency(meta.meta_liquida_mensal) : '—'}</dd>
-                  <dt className="text-slate-500">Resultado atribuível</dt>
+                  <dt className="text-slate-500">Resultado atribuível no mês</dt>
                   <dd className="text-right font-medium">{formatCurrency(resultadoAtribuivel)}</dd>
                   <dt className="text-slate-500">Disponível (saldo conta corrente)</dt>
                   <dd className="text-right font-medium">{formatCurrency(saldoConta)}</dd>
                   <dt className="text-slate-500">Retirado no mês</dt>
                   <dd className="text-right font-medium">{formatCurrency(recebidoNoMes)}</dd>
-                  {status && (
-                    <>
-                      <dt className="text-slate-500">Gap / meta</dt>
-                      <dd className={`text-right font-medium ${status.gap >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {status.gap >= 0 ? '+' : ''}
-                        {formatCurrency(status.gap)}
-                      </dd>
-                    </>
-                  )}
-                  <dt className="text-slate-500">Reserva pessoal</dt>
-                  <dd className="text-right font-medium">{formatCurrency(reservaPessoal)}</dd>
                 </dl>
               </Card>
             );

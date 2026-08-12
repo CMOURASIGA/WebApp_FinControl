@@ -18,4 +18,16 @@ export const profilesService = {
     const { error } = await supabase.from('profiles').update({ nome }).eq('id', id);
     if (error) throw new Error(`atualizar perfil: ${error.message}`);
   },
+
+  /** Só o próprio sócio pode editar seu cadastro (RLS: profiles_update_self). */
+  async atualizarDadosCadastrais(
+    id: string,
+    dados: { nome: string; cpf: string | null; chavePix: string | null }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ nome: dados.nome, cpf: dados.cpf, chave_pix: dados.chavePix })
+      .eq('id', id);
+    if (error) throw new Error(`atualizar dados cadastrais do sócio: ${error.message}`);
+  },
 };

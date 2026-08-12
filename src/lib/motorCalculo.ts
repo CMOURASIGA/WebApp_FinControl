@@ -14,7 +14,6 @@
 import type {
   CustoProjeto,
   Despesa,
-  ParametroPessoal,
   ParametroTributario,
   Receita,
   RegraDistribuicao,
@@ -59,17 +58,6 @@ export function resolveRegraDistribuicaoVigente(
   }
   return resolveVigente(
     regras.filter((r) => r.escopo === 'default'),
-    dataRef
-  );
-}
-
-export function resolveMetaPessoalVigente(
-  parametros: ParametroPessoal[],
-  socioId: string,
-  dataRef: string
-): ParametroPessoal | null {
-  return resolveVigente(
-    parametros.filter((p) => p.socio_id === socioId),
     dataRef
   );
 }
@@ -202,25 +190,6 @@ export function consolidarResultados(resultados: ResultadoProjeto[]): ResultadoP
 }
 
 // ---------------------------------------------------------------------
-// Meta pessoal — acompanhamento, nunca obrigação de pagamento
-// ---------------------------------------------------------------------
-export interface StatusMetaPessoal {
-  meta: number;
-  disponivel: number;
-  gap: number;
-  atingida: boolean;
-}
-
-export function calcularStatusMeta(meta: number, disponivel: number): StatusMetaPessoal {
-  return {
-    meta,
-    disponivel: round2(disponivel),
-    gap: round2(disponivel - meta),
-    atingida: disponivel >= meta,
-  };
-}
-
-// ---------------------------------------------------------------------
 // MRR / ARR
 // ---------------------------------------------------------------------
 export function calcularMRR(
@@ -243,35 +212,15 @@ export function calcularARR(mrr: number): number {
 }
 
 // ---------------------------------------------------------------------
-// Break-even
-//   1) faturamento mínimo para existir: cobre despesas fixas + custos
-//      recorrentes, considerando o tributo médio efetivo.
-//   2) faturamento mínimo para existir + permitir a meta pessoal
-//      configurada de cada sócio.
+// Break-even: faturamento mínimo para a empresa existir, cobrindo suas
+// despesas fixas mensais depois do tributo médio efetivo.
 // ---------------------------------------------------------------------
-export function calcularBreakEven(params: {
-  despesasFixasMensais: number;
-  aliquotaMediaPercentual: number;
-  percentualEmpresa: number;
-  metasPessoais?: { socioId: string; meta: number; percentualSocio: number }[];
-}): { faturamentoMinimo: number; faturamentoComMetas: number } {
+export function calcularBreakEven(params: { despesasFixasMensais: number; aliquotaMediaPercentual: number }): {
+  faturamentoMinimo: number;
+} {
   const fatorTributo = 1 - params.aliquotaMediaPercentual / 100;
-  if (fatorTributo <= 0) return { faturamentoMinimo: Infinity, faturamentoComMetas: Infinity };
-
-  // Faturamento cujo resultado líquido (após tributo) cobre as despesas fixas.
-  const faturamentoMinimo = round2(params.despesasFixasMensais / fatorTributo);
-
-  const metas = params.metasPessoais ?? [];
-  // Faturamento adicional necessário para que, após reservar o percentual
-  // da empresa, cada sócio receba sua meta via seu percentual de split.
-  let faturamentoAdicional = 0;
-  for (const m of metas) {
-    if (m.percentualSocio <= 0) continue;
-    faturamentoAdicional += m.meta / (fatorTributo * (m.percentualSocio / 100));
-  }
-
-  const faturamentoComMetas = round2(faturamentoMinimo + faturamentoAdicional);
-  return { faturamentoMinimo, faturamentoComMetas };
+  if (fatorTributo <= 0) return { faturamentoMinimo: Infinity };
+  return { faturamentoMinimo: round2(params.despesasFixasMensais / fatorTributo) };
 }
 
 // ---------------------------------------------------------------------
