@@ -30,17 +30,46 @@ body {
 
 .sidebar-brand-panel {
   display: flex;
-  height: 104px;
+  height: 116px;
   align-items: center;
   justify-content: center;
-  border-radius: 0 0 16px 16px;
+  border-radius: 0 0 22px 22px;
   border-bottom: 1px solid #dce6ef;
   background: white;
-  padding: 12px 20px;
+  padding: 12px 24px;
   overflow: hidden;
 }
 
-.sidebar-brand-logo { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(1.55); }
+.brand-logo-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 7px 20px rgba(15, 43, 65, 0.08);
+}
+
+.sidebar-brand-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 88px;
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.brand-logo-preview {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  border-radius: 14px;
+  object-fit: contain;
+}
 .brand-highlight-bg { background-color: var(--highlight-brand); }
 .brand-highlight-text { color: var(--highlight-brand); }
 
