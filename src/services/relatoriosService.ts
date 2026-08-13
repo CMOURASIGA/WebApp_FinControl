@@ -51,14 +51,16 @@ export function montarDREDeDados(
   custos: CustoProjeto[],
   despesas: Despesa[]
 ): DREPeriodo {
-  const despesasCorporativas = despesas.filter((d) => d.projeto_id === null);
-  const despesasPorProjeto = despesas.filter((d) => d.projeto_id !== null);
+  const despesasValidas = despesas.filter((d) => d.status !== 'cancelado');
+  const custosValidos = custos.filter((c) => c.status !== 'cancelado');
+  const despesasCorporativas = despesasValidas.filter((d) => d.projeto_id === null);
+  const despesasPorProjeto = despesasValidas.filter((d) => d.projeto_id !== null);
 
   const porProjeto: { projeto: Projeto; resultado: ResultadoProjeto }[] = [];
 
   for (const projeto of projetos) {
     const receitasDoProjeto = receitas.filter((r) => r.projeto_id === projeto.id);
-    const custosDoProjeto = custos.filter((c) => c.projeto_id === projeto.id);
+    const custosDoProjeto = custosValidos.filter((c) => c.projeto_id === projeto.id);
     const despesasDoProjeto = despesasPorProjeto.filter((d) => d.projeto_id === projeto.id);
 
     if (receitasDoProjeto.length === 0 && custosDoProjeto.length === 0 && despesasDoProjeto.length === 0) continue;

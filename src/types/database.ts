@@ -10,7 +10,7 @@ export type TipoReceita = 'pontual' | 'recorrente' | 'ajuste';
 export type StatusReceita = 'previsto' | 'faturado' | 'recebido' | 'vencido' | 'cancelado';
 export type StatusTributo = 'provisionado' | 'pago';
 export type TipoDespesa = 'fixa' | 'variavel' | 'projeto' | 'tributo' | 'investimento';
-export type StatusDespesa = 'provisionado' | 'pago';
+export type StatusDespesa = 'provisionado' | 'pago' | 'cancelado';
 export type InvestidorTipo = 'socio' | 'empresa';
 export type TipoLancamentoSocio = 'credito_resultado' | 'retirada' | 'reembolso' | 'ajuste' | 'debito_ajuste';
 export type TipoLancamentoReserva = 'aporte' | 'uso';
@@ -153,6 +153,16 @@ export interface CustoProjeto {
   observacao: string | null;
   created_by: string | null;
   created_at: string;
+  updated_at: string;
+  status: StatusDespesa;
+  data_pagamento: string | null;
+}
+
+export interface FinanceiroHistorico {
+  id: string; entidade: 'custo_projeto' | 'despesa'; registro_id: string;
+  acao: 'edicao' | 'cancelamento' | 'pagamento' | 'estorno_pagamento' | 'reativacao';
+  dados_anteriores: Record<string, unknown> | null; dados_novos: Record<string, unknown> | null;
+  motivo: string | null; executado_por: string | null; executado_em: string;
 }
 
 export interface Despesa {

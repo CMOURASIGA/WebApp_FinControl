@@ -140,8 +140,8 @@ export function calcularResultadoProjeto(
   const tributoProvisionado = round2(
     sum(receitasValidas.map((r) => (r.valor_bruto * (r.aliquota_aplicada ?? 0)) / 100))
   );
-  const custosDiretos = round2(sum(custos.map((c) => c.valor)));
-  const despesasAtribuidas = round2(sum(despesas.map((d) => d.valor)));
+  const custosDiretos = round2(sum(custos.filter((c) => c.status !== 'cancelado').map((c) => c.valor)));
+  const despesasAtribuidas = round2(sum(despesas.filter((d) => d.status !== 'cancelado').map((d) => d.valor)));
   const resultadoLiquido = round2(receitaBruta - tributoProvisionado - custosDiretos - despesasAtribuidas);
 
   const custosEDespesas = custosDiretos + despesasAtribuidas;

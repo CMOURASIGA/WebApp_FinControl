@@ -13,7 +13,7 @@ import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
 import { calcularResultadoProjeto, resolveRegraDistribuicaoVigente } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { CustoProjeto, Despesa, Socio, Projeto, Receita, ReceitaHistorico, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { CustoProjeto, Despesa, FinanceiroHistorico, Socio, Projeto, Receita, ReceitaHistorico, RegraDistribuicao, SplitSocio } from '../types/database';
 
 const STATUS_TONE: Record<Receita['status'], 'success' | 'warning' | 'danger' | 'neutral'> = {
   previsto: 'neutral',
@@ -144,6 +144,10 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [custoCategoria, setCustoCategoria] = useState('infraestrutura');
   const [custoValor, setCustoValor] = useState('');
   const [custoData, setCustoData] = useState(hoje());
+  const [custoEditando,setCustoEditando]=useState<CustoProjeto|null>(null);
+  const [custoAcao,setCustoAcao]=useState<{custo:CustoProjeto;tipo:'pagar'|'estornar'|'cancelar'|'reativar'}|null>(null);
+  const [custoMotivo,setCustoMotivo]=useState('');
+  const [custoHistorico,setCustoHistorico]=useState<FinanceiroHistorico[]|null>(null);
 
   const criarCusto = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +169,9 @@ export const ProjetoDetalhePage: React.FC = () => {
       setErro((e as Error).message);
     }
   };
+  const abrirCustoEdicao=(c:CustoProjeto)=>{setCustoEditando(c);setCustoDescricao(c.descricao);setCustoCategoria(c.categoria);setCustoValor(String(c.valor));setCustoData(c.data);setCustoMotivo('');};
+  const salvarCusto=async(e:React.FormEvent)=>{e.preventDefault();if(!custoEditando)return;try{await custosProjetoService.editar(custoEditando,{descricao:custoDescricao,categoria:custoCategoria,valor:Number(custoValor),data:custoData,motivo:custoMotivo});setCustoEditando(null);await carregar();}catch(e){setErro((e as Error).message);}};
+  const confirmarCustoAcao=async(e:React.FormEvent)=>{e.preventDefault();if(!custoAcao)return;try{await custosProjetoService.alterarStatus(custoAcao.custo.id,custoAcao.tipo,custoMotivo);setCustoAcao(null);await carregar();}catch(e){setErro((e as Error).message);}};
 
   // --- form: regra específica do projeto ---
   const [percentualEmpresaProjeto, setPercentualEmpresaProjeto] = useState(30);
@@ -381,11 +388,14 @@ export const ProjetoDetalhePage: React.FC = () => {
                 <p className="font-medium text-slate-800">{c.descricao}</p>
                 <p className="text-xs text-slate-500">{c.categoria} · {formatDate(c.data)}</p>
               </div>
-              <span className="font-medium text-red-600">-{formatCurrency(c.valor)}</span>
+              <div className="flex flex-wrap items-center gap-2"><span className={c.status==='cancelado'?'font-medium text-slate-400 line-through':'font-medium text-red-600'}>-{formatCurrency(c.valor)}</span><Badge tone={c.status==='pago'?'success':c.status==='cancelado'?'danger':'warning'}>{c.status}</Badge>{c.status==='provisionado'&&<><button className="text-xs text-blue-600" onClick={()=>abrirCustoEdicao(c)}>editar</button><button className="text-xs text-green-700" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'pagar'});}}>marcar pago</button><button className="text-xs text-red-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'cancelar'});}}>cancelar</button></>}{c.status==='pago'&&<button className="text-xs text-amber-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'estornar'});}}>estornar pagamento</button>}{c.status==='cancelado'&&<button className="text-xs text-blue-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'reativar'});}}>reativar</button>}<button className="text-xs text-slate-500" onClick={async()=>{try{setCustoHistorico(await custosProjetoService.listarHistorico(c.id));}catch(e){setErro((e as Error).message);}}}>histórico</button></div>
             </div>
           ))}
           {custos.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhum custo lançado.</p>}
         </div>
+        <Modal aberto={Boolean(custoEditando)} titulo="Editar custo" descricao="A alteração será registrada no histórico." onClose={()=>setCustoEditando(null)}><form onSubmit={salvarCusto} className="grid gap-4 sm:grid-cols-2"><Field label="Descrição"><Input required value={custoDescricao} onChange={e=>setCustoDescricao(e.target.value)}/></Field><Field label="Categoria"><Input required value={custoCategoria} onChange={e=>setCustoCategoria(e.target.value)}/></Field><Field label="Valor"><Input type="number" min="0" step="0.01" required value={custoValor} onChange={e=>setCustoValor(e.target.value)}/></Field><Field label="Data"><Input type="date" required value={custoData} onChange={e=>setCustoData(e.target.value)}/></Field><Field label="Motivo" className="sm:col-span-2"><Input required value={custoMotivo} onChange={e=>setCustoMotivo(e.target.value)}/></Field><div className="flex justify-end gap-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={()=>setCustoEditando(null)}>Voltar</Button><Button type="submit">Salvar</Button></div></form></Modal>
+        <Modal aberto={Boolean(custoAcao)} titulo={custoAcao?.tipo==='pagar'?'Registrar pagamento':custoAcao?.tipo==='estornar'?'Estornar pagamento':custoAcao?.tipo==='cancelar'?'Cancelar custo':'Reativar custo'} onClose={()=>setCustoAcao(null)}><form onSubmit={confirmarCustoAcao} className="space-y-4"><Field label="Motivo"><Input required={custoAcao?.tipo!=='pagar'} value={custoMotivo} onChange={e=>setCustoMotivo(e.target.value)}/></Field><div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={()=>setCustoAcao(null)}>Voltar</Button><Button type="submit">Confirmar</Button></div></form></Modal>
+        <Modal aberto={custoHistorico!==null} titulo="Histórico do custo" onClose={()=>setCustoHistorico(null)}><div className="divide-y">{custoHistorico?.map(h=><div key={h.id} className="py-3 text-sm"><b className="capitalize">{h.acao.replace(/_/g,' ')}</b><span className="ml-2 text-xs text-slate-500">{new Date(h.executado_em).toLocaleString('pt-BR')}</span>{h.motivo&&<p>Motivo: {h.motivo}</p>}</div>)}{custoHistorico?.length===0&&<p className="text-sm text-slate-500">Nenhuma alteração registrada.</p>}</div></Modal>
       </Card>
     </div>
   );
