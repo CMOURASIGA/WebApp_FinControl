@@ -2,6 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-page: #f2f7fa;
+  --border: #d9e4ec;
+  --sidebar: #003b73;
+  --accent: #003b73;
+  --highlight: #00aeef;
+  --primary-brand: #003b73;
+  --highlight-brand: #00aeef;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top right, rgba(0, 174, 239, 0.09), transparent 26%), linear-gradient(180deg, #fbfdff 0%, var(--bg-page) 30%, #edf4f8 100%);
+  color: #172033;
+  font-family: Manrope, Inter, "Segoe UI", sans-serif;
+}
+
+.sidebar-shell {
+  background: linear-gradient(180deg, var(--primary-brand) 0%, color-mix(in srgb, var(--primary-brand) 82%, #000) 100%);
+  box-shadow: 12px 0 35px rgba(15, 43, 65, 0.08);
+}
+
+.sidebar-brand-panel {
+  display: flex;
+  height: 116px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 22px 22px;
+  border-bottom: 1px solid #dce6ef;
+  background: white;
+  padding: 12px 24px;
+  overflow: hidden;
+}
+
+.brand-logo-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 7px 20px rgba(15, 43, 65, 0.08);
+}
+
+.sidebar-brand-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 88px;
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.brand-logo-preview {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  border-radius: 14px;
+  object-fit: contain;
+}
+.brand-highlight-bg { background-color: var(--highlight-brand); }
+.brand-highlight-text { color: var(--highlight-brand); }
+
+.workspace-card {
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 34px rgba(25, 63, 89, 0.07);
+}
+
+h1, h2, h3 { letter-spacing: -0.015em; }
+
 /* Custom Scrollbar for nicer aesthetics */
 ::-webkit-scrollbar {
   width: 8px;
