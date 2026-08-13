@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
 import { PRODUCT_DESCRIPTION } from '../lib/brand';
 import { useBrand } from '../contexts/BrandContext';
+import { DemoNotice } from '../components/demo/DemoNotice';
 
 export const LoginPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -13,8 +14,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [modo, setModo] = useState<'login' | 'cadastro'>('login');
   const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [email, setEmail] = useState('demo@7finance.app');
+  const [senha, setSenha] = useState('demonstracao');
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -44,12 +45,11 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_right,rgba(0,174,239,0.22),transparent_32%),linear-gradient(135deg,#003b73,#001f3d)] px-4 py-10">
+      <DemoNotice />
       <Card className="w-full max-w-md p-8">
         <img src={brand.logo_url} alt={brand.company_name} className="mx-auto h-28 w-full object-contain" />
         <div className="mt-5 text-center"><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.24em]">{brand.product_name}</p><h1 className="mt-1 text-2xl font-bold text-slate-900">{brand.product_subtitle}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{PRODUCT_DESCRIPTION}</p></div>
-        <p className="mt-2 text-sm text-slate-500">
-          {modo === 'login' ? 'Entre com sua conta de sócio.' : 'Crie sua conta de sócio.'}
-        </p>
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center text-xs font-medium leading-5 text-amber-900">AMBIENTE DE DEMONSTRAÇÃO<br/><span className="font-normal">Seus testes ficam somente neste navegador e dispositivo.</span></div>
 
         <form onSubmit={submeter} className="mt-6 space-y-4">
           {modo === 'cadastro' && (
@@ -72,16 +72,7 @@ export const LoginPage: React.FC = () => {
           </Button>
         </form>
 
-        <button
-          className="mt-4 w-full text-center text-xs font-medium text-slate-500 hover:text-blue-600"
-          onClick={() => {
-            setErro(null);
-            setAviso(null);
-            setModo(modo === 'login' ? 'cadastro' : 'login');
-          }}
-        >
-          {modo === 'login' ? 'Ainda não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
-        </button>
+        <p className="mt-4 text-center text-[11px] leading-5 text-slate-400">Use os dados já preenchidos. Nenhuma conta real será criada.</p>
       </Card>
     </div>
   );

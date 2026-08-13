@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, ReceiptText, Users, TrendingUp, SlidersHorizontal, CalendarCheck, LogOut, Menu, X, CircleDollarSign } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ReceiptText, Users, TrendingUp, SlidersHorizontal, CalendarCheck, LogOut, Menu, X, CircleDollarSign, RotateCcw, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrand } from '../../contexts/BrandContext';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { resetDemoData } from '../../lib/demoSupabase';
 
 const NAV_ITEMS = [
   { section: 'Visão financeira', to: '/', label: 'Visão Geral', icon: LayoutDashboard, end: true },
@@ -22,6 +25,7 @@ export const AppLayout: React.FC = () => {
   const { brand } = useBrand();
   const { pathname } = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
+  const [confirmarReset, setConfirmarReset] = useState(false);
   const titulo = pathname.startsWith('/projetos/') ? 'Detalhes do Projeto' : TITULOS[pathname] ?? 'Workspace financeiro';
   const sections = Array.from(new Set(NAV_ITEMS.map((item) => item.section)));
   const iniciais = (profile?.nome ?? 'Usuário').split(' ').filter(Boolean).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
@@ -38,9 +42,11 @@ export const AppLayout: React.FC = () => {
         <div className="border-t border-white/15 p-4"><div className="flex items-center gap-3"><span className="brand-highlight-bg flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-slate-950">{iniciais}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-white">{profile?.nome ?? '...'}</p><p className="text-[10px] uppercase tracking-wide text-cyan-200">{profile?.papel ?? 'usuário'}</p></div><button onClick={() => signOut()} className="rounded-lg p-2 text-cyan-100 hover:bg-white/10 hover:text-white" title="Sair"><LogOut className="h-4 w-4" /></button></div></div>
       </aside>
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-6"><div className="flex items-center gap-3"><button className="rounded-xl border border-slate-200 p-2 text-slate-600 md:hidden" onClick={() => setMenuAberto(true)}><Menu className="h-5 w-5" /></button><div><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.2em]">Workspace financeiro</p><h1 className="text-base font-semibold text-slate-900">{titulo}</h1></div></div><span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 sm:inline-flex"><span className="h-2 w-2 rounded-full bg-emerald-500" />Operação online</span></header>
+        <div className="flex items-center justify-center gap-2 bg-amber-400 px-3 py-2 text-center text-[11px] font-bold text-amber-950"><FlaskConical className="h-4 w-4"/>AMBIENTE DE DEMONSTRAÇÃO. Alterações salvas apenas neste navegador e dispositivo.</div>
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-6"><div className="flex items-center gap-3"><button className="rounded-xl border border-slate-200 p-2 text-slate-600 md:hidden" onClick={() => setMenuAberto(true)}><Menu className="h-5 w-5" /></button><div><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.2em]">Workspace financeiro</p><h1 className="text-base font-semibold text-slate-900">{titulo}</h1></div></div><button onClick={()=>setConfirmarReset(true)} className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"><RotateCcw className="h-3.5 w-3.5"/><span className="hidden sm:inline">Restaurar demonstração</span></button></header>
         <main className="flex-1 overflow-x-hidden p-4 md:p-6"><div className="mx-auto max-w-7xl"><Outlet /></div></main>
       </div>
+      <Modal aberto={confirmarReset} titulo="Restaurar dados da demonstração?" descricao="Todos os testes feitos neste navegador serão apagados e os dados fictícios iniciais voltarão." onClose={()=>setConfirmarReset(false)}><div className="flex justify-end gap-2"><Button variant="secondary" onClick={()=>setConfirmarReset(false)}>Cancelar</Button><Button variant="danger" onClick={resetDemoData}>Restaurar dados</Button></div></Modal>
     </div>
   );
 };
