@@ -6,13 +6,13 @@
 export type Papel = 'admin' | 'financeiro' | 'socio' | 'consulta';
 export type TipoProjeto = 'servico' | 'implantacao' | 'recorrente' | 'consultoria' | 'conjunto';
 export type StatusProjeto = 'ativo' | 'concluido' | 'cancelado';
-export type TipoReceita = 'pontual' | 'recorrente';
+export type TipoReceita = 'pontual' | 'recorrente' | 'ajuste';
 export type StatusReceita = 'previsto' | 'faturado' | 'recebido' | 'vencido' | 'cancelado';
 export type StatusTributo = 'provisionado' | 'pago';
 export type TipoDespesa = 'fixa' | 'variavel' | 'projeto' | 'tributo' | 'investimento';
 export type StatusDespesa = 'provisionado' | 'pago';
 export type InvestidorTipo = 'socio' | 'empresa';
-export type TipoLancamentoSocio = 'credito_resultado' | 'retirada' | 'reembolso' | 'ajuste';
+export type TipoLancamentoSocio = 'credito_resultado' | 'retirada' | 'reembolso' | 'ajuste' | 'debito_ajuste';
 export type TipoLancamentoReserva = 'aporte' | 'uso';
 export type StatusAssinatura = 'ativa' | 'suspensa' | 'cancelada';
 export type StatusFechamento = 'aberto' | 'fechado';
@@ -129,6 +129,14 @@ export interface Receita {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  receita_origem_id: string | null;
+}
+
+export interface ReceitaHistorico {
+  id: string; receita_id: string;
+  acao: 'edicao' | 'cancelamento' | 'recebimento' | 'estorno_recebimento' | 'ajuste_fechado';
+  dados_anteriores: Partial<Receita> | null; dados_novos: Partial<Receita> | null;
+  motivo: string | null; executado_por: string | null; executado_em: string;
 }
 
 export interface CustoProjeto {

@@ -21,7 +21,7 @@ export const socioService = {
   calcularSaldo(lancamentos: SocioLancamento[]): number {
     return round2(
       lancamentos.reduce((acc, l) => {
-        const sinal = l.tipo === 'retirada' ? -1 : 1;
+        const sinal = l.tipo === 'retirada' || l.tipo === 'debito_ajuste' ? -1 : 1;
         return acc + sinal * l.valor;
       }, 0)
     );

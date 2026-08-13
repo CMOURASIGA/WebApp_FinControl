@@ -61,7 +61,7 @@ export const fechamentoService = {
     };
 
     const creditos = Object.entries(dre.consolidadoProjetos.porSocio)
-      .filter(([, valor]) => valor > 0)
+      .filter(([, valor]) => valor !== 0)
       .map(([socio_id, valor]) => ({ socio_id, valor }));
     const { data, error } = await supabase.rpc('fechar_mes', {
       p_competencia: inicio,

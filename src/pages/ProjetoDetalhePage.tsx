@@ -12,7 +12,7 @@ import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
 import { calcularResultadoProjeto, resolveRegraDistribuicaoVigente } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { CustoProjeto, Despesa, Socio, Projeto, Receita, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { CustoProjeto, Despesa, Socio, Projeto, Receita, ReceitaHistorico, RegraDistribuicao, SplitSocio } from '../types/database';
 
 const STATUS_TONE: Record<Receita['status'], 'success' | 'warning' | 'danger' | 'neutral'> = {
   previsto: 'neutral',
@@ -69,6 +69,40 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [valorBruto, setValorBruto] = useState('');
   const [tipoReceita, setTipoReceita] = useState<Receita['tipo']>('pontual');
   const [dataFato, setDataFato] = useState(hoje());
+  const [editando, setEditando] = useState<Receita | null>(null);
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editValor, setEditValor] = useState('');
+  const [editTipo, setEditTipo] = useState<Receita['tipo']>('pontual');
+  const [editData, setEditData] = useState(hoje());
+  const [motivo, setMotivo] = useState('');
+  const [historico, setHistorico] = useState<ReceitaHistorico[]>([]);
+  const [historicoDe, setHistoricoDe] = useState<string | null>(null);
+
+  const iniciarEdicao = (r: Receita) => {
+    setEditando(r); setEditDescricao(r.descricao); setEditValor(String(r.valor_bruto));
+    setEditTipo(r.tipo === 'ajuste' ? 'pontual' : r.tipo); setEditData(r.data_fato_gerador); setMotivo('');
+  };
+  const salvarEdicao = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!editando) return; setErro(null);
+    try { await receitasService.editar(editando, { descricao: editDescricao, tipo: editTipo, valorBruto: Number(editValor), dataPrevista: editData, dataFatoGerador: editData, motivo }); setEditando(null); await carregar(); }
+    catch (e) { setErro((e as Error).message); }
+  };
+  const executarAcao = async (r: Receita, acao: 'cancelar' | 'estornar' | 'reativar' | 'corrigir') => {
+    const texto = window.prompt(acao === 'corrigir' ? 'Informe o motivo da correção:' : 'Informe o motivo desta ação:');
+    if (!texto) return;
+    try {
+      if (acao === 'cancelar') await receitasService.cancelar(r.id, texto);
+      if (acao === 'estornar') await receitasService.estornarRecebimento(r.id, texto);
+      if (acao === 'reativar') await receitasService.reativar(r.id, texto);
+      if (acao === 'corrigir') {
+        const valor = window.prompt(`Valor original: ${formatCurrency(r.valor_bruto)}. Informe o valor correto:`);
+        if (valor === null || Number.isNaN(Number(valor))) return;
+        await receitasService.corrigirFechada(r.id, Number(valor), texto);
+      }
+      await carregar();
+    } catch (e) { setErro((e as Error).message); }
+  };
+  const abrirHistorico = async (r: Receita) => { try { setHistorico(await receitasService.listarHistorico(r.id)); setHistoricoDe(r.id); } catch (e) { setErro((e as Error).message); } };
 
   const criarReceita = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,13 +278,22 @@ export const ProjetoDetalhePage: React.FC = () => {
           <Button type="submit" size="sm" className="sm:col-span-5">Lançar receita</Button>
         </form>
 
+        {editando && <form onSubmit={salvarEdicao} className="mt-5 grid gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:grid-cols-5 sm:items-end">
+          <Field label="Descrição" className="sm:col-span-2"><Input required value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} /></Field>
+          <Field label="Valor"><Input type="number" min="0" step="0.01" required value={editValor} onChange={(e) => setEditValor(e.target.value)} /></Field>
+          <Field label="Tipo"><Select value={editTipo} onChange={(e) => setEditTipo(e.target.value as Receita['tipo'])}><option value="pontual">Pontual</option><option value="recorrente">Recorrente</option></Select></Field>
+          <Field label="Data"><Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} /></Field>
+          <Field label="Motivo da correção" className="sm:col-span-4"><Input required value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: valor digitado incorretamente" /></Field>
+          <div className="flex gap-2"><Button type="submit" size="sm">Salvar</Button><Button type="button" size="sm" variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button></div>
+        </form>}
+
         <div className="mt-4 divide-y divide-slate-100">
           {receitas.map((r) => (
-            <div key={r.id} className="flex items-center justify-between py-2 text-sm">
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
               <div>
                 <p className="font-medium text-slate-800">{r.descricao}</p>
                 <p className="text-xs text-slate-500">
-                  {formatDate(r.data_fato_gerador)} · alíquota aplicada {r.aliquota_aplicada}%
+                  {formatDate(r.data_fato_gerador)} · alíquota aplicada {r.aliquota_aplicada}%{r.receita_origem_id && ' · ajuste de receita anterior'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -260,18 +303,25 @@ export const ProjetoDetalhePage: React.FC = () => {
                   <button
                     className="text-xs font-medium text-blue-600 hover:underline"
                     onClick={async () => {
-                      await receitasService.marcarRecebida(r.id, hoje());
-                      carregar();
+                      try { setErro(null); await receitasService.marcarRecebida(r.id, hoje()); await carregar(); }
+                      catch (e) { setErro((e as Error).message); }
                     }}
                   >
                     marcar recebida
                   </button>
                 )}
+                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
+                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => executarAcao(r, 'cancelar')}>cancelar</button>}
+                {r.tipo !== 'ajuste' && r.status === 'recebido' && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => executarAcao(r, 'estornar')}>estornar recebimento</button>}
+                {r.tipo !== 'ajuste' && r.status === 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => executarAcao(r, 'reativar')}>reativar</button>}
+                {r.tipo !== 'ajuste' && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => executarAcao(r, 'corrigir')}>corrigir valor fechado</button>}
+                <button className="text-xs font-medium text-slate-500 hover:underline" onClick={() => abrirHistorico(r)}>histórico</button>
               </div>
             </div>
           ))}
           {receitas.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhuma receita lançada.</p>}
         </div>
+        {historicoDe && <div className="mt-4 rounded-lg border border-slate-200 p-4"><div className="flex justify-between"><h3 className="text-sm font-semibold">Histórico da receita</h3><button className="text-xs text-slate-500" onClick={() => setHistoricoDe(null)}>fechar</button></div><div className="mt-2 divide-y">{historico.map((h) => <div key={h.id} className="py-2 text-xs"><span className="font-medium">{h.acao.replace(/_/g, ' ')}</span><span className="ml-2 text-slate-500">{new Date(h.executado_em).toLocaleString('pt-BR')}</span>{h.motivo && <p className="text-slate-600">Motivo: {h.motivo}</p>}</div>)}{!historico.length && <p className="text-xs text-slate-500">Ainda não existem alterações.</p>}</div></div>}
       </Card>
 
       {/* Custos diretos */}
