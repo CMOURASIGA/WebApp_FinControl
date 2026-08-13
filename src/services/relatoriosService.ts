@@ -13,19 +13,27 @@ export interface DREPeriodo {
   porProjeto: { projeto: Projeto; resultado: ResultadoProjeto }[];
   consolidadoProjetos: ResultadoProjeto;
   despesasCorporativas: number;
+  despesasCorporativasFixas: number;
+  despesasVariaveisTotais: number;
   valorEmpresaLiquido: number; // valorEmpresa dos projetos - despesas corporativas
 }
 
 export const relatoriosService = {
   async montarDRE(periodoInicio: string, periodoFim: string, somenteRealizado = false): Promise<DREPeriodo> {
     let receitasQuery = supabase.from('receitas').select('*').gte('data_fato_gerador', periodoInicio).lte('data_fato_gerador', periodoFim);
-    if (somenteRealizado) receitasQuery = receitasQuery.eq('status', 'recebido');
+    let custosQuery = supabase.from('custos_projeto').select('*').gte('data', periodoInicio).lte('data', periodoFim);
+    let despesasQuery = supabase.from('despesas').select('*').gte('competencia', periodoInicio).lte('competencia', periodoFim);
+    if (somenteRealizado) {
+      receitasQuery = receitasQuery.eq('status', 'recebido');
+      custosQuery = custosQuery.eq('status', 'pago');
+      despesasQuery = despesasQuery.eq('status', 'pago');
+    }
     const [{ data: projetos, error: e1 }, { data: receitas, error: e2 }, { data: custos, error: e3 }, { data: despesas, error: e4 }] =
       await Promise.all([
         supabase.from('projetos').select('*'),
         receitasQuery,
-        supabase.from('custos_projeto').select('*').gte('data', periodoInicio).lte('data', periodoFim),
-        supabase.from('despesas').select('*').gte('competencia', periodoInicio).lte('competencia', periodoFim),
+        custosQuery,
+        despesasQuery,
       ]);
     if (e1) throw new Error(`carregar projetos: ${e1.message}`);
     if (e2) throw new Error(`carregar receitas: ${e2.message}`);
@@ -73,6 +81,12 @@ export function montarDREDeDados(
 
   const consolidadoProjetos = consolidarResultados(porProjeto.map((p) => p.resultado));
   const totalDespesasCorporativas = round2(despesasCorporativas.reduce((acc, d) => acc + d.valor, 0));
+  const despesasCorporativasFixas = round2(despesasCorporativas.filter((d) => d.tipo === 'fixa').reduce((acc, d) => acc + d.valor, 0));
+  const despesasVariaveisTotais = round2(
+    custosValidos.reduce((acc, c) => acc + c.valor, 0) +
+    despesasPorProjeto.reduce((acc, d) => acc + d.valor, 0) +
+    despesasCorporativas.filter((d) => d.tipo !== 'fixa').reduce((acc, d) => acc + d.valor, 0)
+  );
   const valorEmpresaLiquido = round2(consolidadoProjetos.valorEmpresa - totalDespesasCorporativas);
 
   return {
@@ -81,6 +95,8 @@ export function montarDREDeDados(
     porProjeto,
     consolidadoProjetos,
     despesasCorporativas: totalDespesasCorporativas,
+    despesasCorporativasFixas,
+    despesasVariaveisTotais,
     valorEmpresaLiquido,
   };
 }

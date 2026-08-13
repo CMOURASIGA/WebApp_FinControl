@@ -215,12 +215,15 @@ export function calcularARR(mrr: number): number {
 // Break-even: faturamento mínimo para a empresa existir, cobrindo suas
 // despesas fixas mensais depois do tributo médio efetivo.
 // ---------------------------------------------------------------------
-export function calcularBreakEven(params: { despesasFixasMensais: number; aliquotaMediaPercentual: number }): {
+export function calcularBreakEven(params: { despesasFixasMensais: number; receitaBruta: number; tributos: number; custosVariaveis: number }): {
   faturamentoMinimo: number;
+  margemContribuicaoPercentual: number;
 } {
-  const fatorTributo = 1 - params.aliquotaMediaPercentual / 100;
-  if (fatorTributo <= 0) return { faturamentoMinimo: Infinity };
-  return { faturamentoMinimo: round2(params.despesasFixasMensais / fatorTributo) };
+  if (params.receitaBruta <= 0) return { faturamentoMinimo: Infinity, margemContribuicaoPercentual: 0 };
+  const contribuicao = params.receitaBruta - params.tributos - params.custosVariaveis;
+  const taxa = contribuicao / params.receitaBruta;
+  if (taxa <= 0) return { faturamentoMinimo: Infinity, margemContribuicaoPercentual: round2(taxa * 100) };
+  return { faturamentoMinimo: round2(params.despesasFixasMensais / taxa), margemContribuicaoPercentual: round2(taxa * 100) };
 }
 
 // ---------------------------------------------------------------------
@@ -263,9 +266,20 @@ export function simularCenario(input: SimulacaoInput): ResultadoProjeto & { marg
 // ---------------------------------------------------------------------
 // ROI
 // ---------------------------------------------------------------------
-export function calcularROI(capitalInvestido: number, retornoLiquidoAtribuivel: number): number {
+export function calcularROI(capitalInvestido: number, retornoLiquidoAtribuivel: number, capitalNaoConsideradoNoResultado = capitalInvestido): number {
   if (capitalInvestido <= 0) return 0;
-  return round2(((retornoLiquidoAtribuivel - capitalInvestido) / capitalInvestido) * 100);
+  const beneficioLiquido = retornoLiquidoAtribuivel - capitalNaoConsideradoNoResultado;
+  return round2((beneficioLiquido / capitalInvestido) * 100);
+}
+
+export function calcularPaybackMeses(capitalInvestido: number, retornosMensais: number[]): number | null {
+  if (capitalInvestido <= 0) return 0;
+  let acumulado = 0;
+  for (let i = 0; i < retornosMensais.length; i += 1) {
+    acumulado += retornosMensais[i];
+    if (acumulado >= capitalInvestido) return i + 1;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------

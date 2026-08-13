@@ -5,13 +5,14 @@ import { relatoriosService, type DREPeriodo } from '../services/relatoriosServic
 import { assinaturasService } from '../services/assinaturasService';
 import { sociosService } from '../services/sociosService';
 import { socioService, reservaEmpresaService } from '../services/socioService';
-import { calcularARR, calcularMRR } from '../lib/motorCalculo';
+import { calcularARR, calcularMRR, calcularBreakEven } from '../lib/motorCalculo';
 import { formatCurrency, mesAtual, primeiroDiaDoMes, ultimoDiaDoMes, nomeDoMes, hoje } from '../utils/formatters';
 import type { Assinatura, Socio, SocioLancamento } from '../types/database';
 
 export const DashboardPage: React.FC = () => {
   const [mes, setMes] = useState(mesAtual());
   const [dre, setDre] = useState<DREPeriodo | null>(null);
+  const [dreRealizada, setDreRealizada] = useState<DREPeriodo | null>(null);
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
   const [lancamentos, setLancamentos] = useState<SocioLancamento[]>([]);
@@ -29,14 +30,16 @@ export const DashboardPage: React.FC = () => {
 
     Promise.all([
       relatoriosService.montarDRE(inicio, fim),
+      relatoriosService.montarDRE(inicio, fim, true),
       assinaturasService.listar(),
       sociosService.listarAtivos(),
       socioService.listarTodos(),
       reservaEmpresaService.listar(),
     ])
-      .then(([dreData, assData, sociosData, lancData, reservaData]) => {
+      .then(([dreData, dreRealizadaData, assData, sociosData, lancData, reservaData]) => {
         if (!ativo) return;
         setDre(dreData);
+        setDreRealizada(dreRealizadaData);
         setAssinaturas(assData);
         setSocios(sociosData);
         setLancamentos(lancData);
@@ -61,10 +64,18 @@ export const DashboardPage: React.FC = () => {
   const margem = dre && dre.consolidadoProjetos.receitaBruta > 0
     ? (resultadoLiquidoEmpresa / dre.consolidadoProjetos.receitaBruta) * 100
     : 0;
+  const breakEven = dre && dreRealizada ? calcularBreakEven({
+    despesasFixasMensais: dre.despesasCorporativasFixas,
+    receitaBruta: dreRealizada.consolidadoProjetos.receitaBruta,
+    tributos: dreRealizada.consolidadoProjetos.tributoProvisionado,
+    custosVariaveis: dreRealizada.despesasVariaveisTotais,
+  }) : { faturamentoMinimo: 0, margemContribuicaoPercentual: 0 };
+  const margemSeguranca = Number.isFinite(breakEven.faturamentoMinimo) && dreRealizada
+    ? dreRealizada.consolidadoProjetos.receitaBruta - breakEven.faturamentoMinimo : 0;
 
   if (carregando) return <p className="text-sm text-slate-500">Carregando painel...</p>;
   if (erro) return <p className="text-sm text-red-600">Erro ao carregar dashboard: {erro}</p>;
-  if (!dre) return null;
+  if (!dre || !dreRealizada) return null;
 
   return (
     <div className="space-y-8">
@@ -100,6 +111,27 @@ export const DashboardPage: React.FC = () => {
           <StatCard label="Custos diretos de projetos" value={formatCurrency(dre.consolidadoProjetos.custosDiretos)} tone="negative" />
           <StatCard label="Despesas atribuídas a projetos" value={formatCurrency(dre.consolidadoProjetos.despesasAtribuidas)} tone="negative" />
           <StatCard label="Despesas corporativas" value={formatCurrency(dre.despesasCorporativas)} tone="negative" />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Previsto versus realizado</h2>
+        <Card className="overflow-hidden p-0">
+          <div className="grid grid-cols-4 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"><span>Indicador</span><span className="text-right">Previsto</span><span className="text-right">Realizado</span><span className="text-right">Diferença</span></div>
+          <ComparisonRow label="Receitas" previsto={dre.consolidadoProjetos.receitaBruta} realizado={dreRealizada.consolidadoProjetos.receitaBruta}/>
+          <ComparisonRow label="Custos e despesas" previsto={dre.consolidadoProjetos.custosDiretos+dre.consolidadoProjetos.despesasAtribuidas+dre.despesasCorporativas} realizado={dreRealizada.consolidadoProjetos.custosDiretos+dreRealizada.consolidadoProjetos.despesasAtribuidas+dreRealizada.despesasCorporativas} menorMelhor/>
+          <ComparisonRow label="Resultado líquido" previsto={resultadoLiquidoEmpresa} realizado={dreRealizada.consolidadoProjetos.resultadoLiquido-dreRealizada.despesasCorporativas}/>
+        </Card>
+        <p className="mt-2 text-xs leading-5 text-slate-500">Previsto considera lançamentos provisionados. Realizado considera somente receitas recebidas e saídas pagas.</p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Ponto de equilíbrio</h2>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard label="Faturamento mínimo" value={Number.isFinite(breakEven.faturamentoMinimo)?formatCurrency(breakEven.faturamentoMinimo):'Não atingível'} />
+          <StatCard label="Margem de contribuição" value={`${breakEven.margemContribuicaoPercentual.toFixed(1)}%`} />
+          <StatCard label="Faturamento realizado" value={formatCurrency(dreRealizada.consolidadoProjetos.receitaBruta)} />
+          <StatCard label="Margem de segurança" value={formatCurrency(margemSeguranca)} tone={margemSeguranca >= 0 ? 'positive' : 'negative'} />
         </div>
       </section>
 
@@ -144,3 +176,5 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
+
+const ComparisonRow: React.FC<{label:string;previsto:number;realizado:number;menorMelhor?:boolean}> = ({label,previsto,realizado,menorMelhor=false}) => { const diferenca=realizado-previsto; const favoravel=menorMelhor?diferenca<=0:diferenca>=0; return <div className="grid grid-cols-4 border-t border-slate-100 px-4 py-3 text-sm"><span className="font-medium text-slate-700">{label}</span><span className="text-right text-slate-600">{formatCurrency(previsto)}</span><span className="text-right font-medium text-slate-800">{formatCurrency(realizado)}</span><span className={`text-right font-medium ${favoravel?'text-emerald-600':'text-red-600'}`}>{formatCurrency(diferenca)}</span></div>; };

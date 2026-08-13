@@ -191,6 +191,11 @@ export interface Investimento {
   data: string;
   tipo: string;
   descricao: string | null;
+  retorno_esperado: number | null;
+  prazo_esperado_meses: number | null;
+  roi_meta_percentual: number | null;
+  considerado_no_resultado: boolean;
+  data_encerramento: string | null;
   created_by: string | null;
   created_at: string;
 }

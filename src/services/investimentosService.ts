@@ -25,6 +25,10 @@ export const investimentosService = {
     data: string;
     tipo: string;
     descricao?: string;
+    retornoEsperado?: number | null;
+    prazoEsperadoMeses?: number | null;
+    roiMetaPercentual?: number | null;
+    consideradoNoResultado: boolean;
     createdBy: string;
   }): Promise<Investimento> {
     const { data, error } = await supabase
@@ -37,6 +41,10 @@ export const investimentosService = {
         data: input.data,
         tipo: input.tipo,
         descricao: input.descricao ?? null,
+        retorno_esperado: input.retornoEsperado ?? null,
+        prazo_esperado_meses: input.prazoEsperadoMeses ?? null,
+        roi_meta_percentual: input.roiMetaPercentual ?? null,
+        considerado_no_resultado: input.consideradoNoResultado,
         created_by: input.createdBy,
       })
       .select('*')
