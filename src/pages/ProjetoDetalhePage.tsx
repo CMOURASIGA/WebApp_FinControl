@@ -9,10 +9,10 @@ import { projetosService } from '../services/projetosService';
 import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
 import { parametrosService } from '../services/parametrosService';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { calcularResultadoProjeto, resolveRegraDistribuicaoVigente } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { CustoProjeto, Despesa, Profile, Projeto, Receita, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { CustoProjeto, Despesa, Socio, Projeto, Receita, RegraDistribuicao, SplitSocio } from '../types/database';
 
 const STATUS_TONE: Record<Receita['status'], 'success' | 'warning' | 'danger' | 'neutral'> = {
   previsto: 'neutral',
@@ -31,7 +31,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [custos, setCustos] = useState<CustoProjeto[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = async () => {
@@ -42,7 +42,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       custosProjetoService.listarPorProjeto(id),
       despesasService.listar(),
       parametrosService.listarRegrasDistribuicao(),
-      profilesService.listarSocios(),
+      sociosService.listarAtivos(),
     ]);
     setProjeto(proj);
     setReceitas(rec);

@@ -3,17 +3,17 @@ import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
 import { assinaturasService } from '../services/assinaturasService';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { socioService, reservaEmpresaService } from '../services/socioService';
 import { calcularARR, calcularMRR } from '../lib/motorCalculo';
 import { formatCurrency, mesAtual, primeiroDiaDoMes, ultimoDiaDoMes, nomeDoMes, hoje } from '../utils/formatters';
-import type { Assinatura, Profile, SocioLancamento } from '../types/database';
+import type { Assinatura, Socio, SocioLancamento } from '../types/database';
 
 export const DashboardPage: React.FC = () => {
   const [mes, setMes] = useState(mesAtual());
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [lancamentos, setLancamentos] = useState<SocioLancamento[]>([]);
   const [reservaEmpresa, setReservaEmpresa] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -30,7 +30,7 @@ export const DashboardPage: React.FC = () => {
     Promise.all([
       relatoriosService.montarDRE(inicio, fim),
       assinaturasService.listar(),
-      profilesService.listarSocios(),
+      sociosService.listarAtivos(),
       socioService.listarTodos(),
       reservaEmpresaService.listar(),
     ])

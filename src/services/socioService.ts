@@ -46,7 +46,13 @@ export const socioService = {
     descricao?: string;
     createdBy: string;
   }): Promise<SocioLancamento> {
-    return this.registrar({ ...input, tipo: 'retirada' });
+    const { data, error } = await supabase.rpc('registrar_retirada_socio', {
+      p_socio_id: input.socioId,
+      p_valor: input.valor,
+      p_data: input.data,
+      p_descricao: input.descricao ?? null,
+    });
+    return assertNoError(data, error, 'registrar retirada') as SocioLancamento;
   },
 
   async registrar(input: {

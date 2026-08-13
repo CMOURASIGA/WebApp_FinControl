@@ -5,16 +5,16 @@ import { Field, Input } from '../components/ui/Input';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { parametrosService } from '../services/parametrosService';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { resolveVigente } from '../lib/motorCalculo';
 import { formatDate, hoje } from '../utils/formatters';
-import type { ParametroTributario, Profile, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { ParametroTributario, Socio, RegraDistribuicao, SplitSocio } from '../types/database';
 
 export const ParametrosPage: React.FC = () => {
   const { user } = useAuth();
   const [tributarios, setTributarios] = useState<ParametroTributario[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -22,7 +22,7 @@ export const ParametrosPage: React.FC = () => {
     const [t, r, s] = await Promise.all([
       parametrosService.listarTodosTributarios(),
       parametrosService.listarRegrasDistribuicao(),
-      profilesService.listarSocios(),
+      sociosService.listarAtivos(),
     ]);
     setTributarios(t);
     setRegras(r);

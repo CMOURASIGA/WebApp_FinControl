@@ -5,9 +5,9 @@ import { Badge } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
 import { fechamentoService } from '../services/fechamentoService';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { formatCurrency, mesAtual, nomeDoMes, primeiroDiaDoMes, ultimoDiaDoMes } from '../utils/formatters';
-import type { FechamentoMensal, Profile } from '../types/database';
+import type { FechamentoMensal, Socio } from '../types/database';
 
 export const FechamentoPage: React.FC = () => {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ export const FechamentoPage: React.FC = () => {
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [fechamentoAtual, setFechamentoAtual] = useState<FechamentoMensal | null>(null);
   const [historico, setHistorico] = useState<FechamentoMensal[]>([]);
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export const FechamentoPage: React.FC = () => {
         relatoriosService.montarDRE(inicio, fim),
         fechamentoService.obterPorCompetencia(mes),
         fechamentoService.listar(),
-        profilesService.listarSocios(),
+        sociosService.listarAtivos(),
       ]);
       setDre(dreData);
       setFechamentoAtual(fechData);

@@ -2,16 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Field, Input } from '../components/ui/Input';
 import { SplitSociosEditor } from '../components/SplitSociosEditor';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { parametrosService } from '../services/parametrosService';
 import { resolveVigente, simularCenario } from '../lib/motorCalculo';
 import { formatCurrency, hoje } from '../utils/formatters';
-import type { Profile, SplitSocio } from '../types/database';
+import type { Socio, SplitSocio } from '../types/database';
 
 const ALIQUOTAS_SUGERIDAS = [6, 8, 10, 12, 15];
 
 export const SimuladorPage: React.FC = () => {
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [receitaBruta, setReceitaBruta] = useState('19000');
   const [aliquota, setAliquota] = useState(6);
   const [custos, setCustos] = useState('1500');
@@ -20,7 +20,7 @@ export const SimuladorPage: React.FC = () => {
   const [splits, setSplits] = useState<SplitSocio[]>([]);
 
   useEffect(() => {
-    Promise.all([profilesService.listarSocios(), parametrosService.listarRegrasDistribuicao(), parametrosService.listarTodosTributarios()]).then(
+    Promise.all([sociosService.listarAtivos(), parametrosService.listarRegrasDistribuicao(), parametrosService.listarTodosTributarios()]).then(
       ([soc, regras, tributos]) => {
         setSocios(soc);
         const regraDefault = resolveVigente(

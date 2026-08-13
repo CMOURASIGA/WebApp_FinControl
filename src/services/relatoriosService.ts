@@ -17,11 +17,13 @@ export interface DREPeriodo {
 }
 
 export const relatoriosService = {
-  async montarDRE(periodoInicio: string, periodoFim: string): Promise<DREPeriodo> {
+  async montarDRE(periodoInicio: string, periodoFim: string, somenteRealizado = false): Promise<DREPeriodo> {
+    let receitasQuery = supabase.from('receitas').select('*').gte('data_fato_gerador', periodoInicio).lte('data_fato_gerador', periodoFim);
+    if (somenteRealizado) receitasQuery = receitasQuery.eq('status', 'recebido');
     const [{ data: projetos, error: e1 }, { data: receitas, error: e2 }, { data: custos, error: e3 }, { data: despesas, error: e4 }] =
       await Promise.all([
         supabase.from('projetos').select('*'),
-        supabase.from('receitas').select('*').gte('data_fato_gerador', periodoInicio).lte('data_fato_gerador', periodoFim),
+        receitasQuery,
         supabase.from('custos_projeto').select('*').gte('data', periodoInicio).lte('data', periodoFim),
         supabase.from('despesas').select('*').gte('competencia', periodoInicio).lte('competencia', periodoFim),
       ]);

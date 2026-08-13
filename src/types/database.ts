@@ -3,7 +3,7 @@
 // o projeto real — a forma dos objetos foi desenhada para bater 1:1 com as
 // colunas das tabelas.
 
-export type Papel = 'socio' | 'admin';
+export type Papel = 'admin' | 'financeiro' | 'socio' | 'consulta';
 export type TipoProjeto = 'servico' | 'implantacao' | 'recorrente' | 'consultoria' | 'conjunto';
 export type StatusProjeto = 'ativo' | 'concluido' | 'cancelado';
 export type TipoReceita = 'pontual' | 'recorrente';
@@ -34,6 +34,23 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface Socio {
+  id: string;
+  profile_id: string | null;
+  nome: string;
+  cpf: string | null;
+  chave_pix: string | null;
+  email: string | null;
+  telefone: string | null;
+  tipo: 'socio' | 'investidor';
+  data_entrada: string;
+  data_saida: string | null;
+  ativo: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Cliente {
   id: string;
   nome: string;
@@ -52,6 +69,9 @@ export interface Projeto {
   origem_economica: string;
   responsavel_comercial: string | null;
   responsavel_execucao: string | null;
+  originador_socio_id: string | null;
+  responsavel_comercial_socio_id: string | null;
+  responsavel_execucao_socio_id: string | null;
   status: StatusProjeto;
   observacao: string | null;
   created_by: string | null;
@@ -160,6 +180,7 @@ export interface SocioLancamento {
   valor: number;
   projeto_id: string | null;
   receita_id: string | null;
+  fechamento_id: string | null;
   data: string;
   descricao: string | null;
   created_by: string | null;

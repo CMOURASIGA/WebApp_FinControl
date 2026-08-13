@@ -26,7 +26,7 @@ Este é um sistema de controle da **empresa** — nenhuma tela ou tabela guarda 
 ## Configurando o Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. No SQL Editor do projeto, rode **em ordem** o conteúdo de [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) e depois [`supabase/migrations/0002_remove_pessoal_dados_socio.sql`](supabase/migrations/0002_remove_pessoal_dados_socio.sql) (ou use `supabase db push` com a Supabase CLI, se preferir versionar as migrações localmente).
+2. No SQL Editor do projeto, rode **em ordem** as migrations `0001`, `0002`, `0003` e `0004` de [`supabase/migrations`](supabase/migrations). Em uma base que já possui as três primeiras, execute somente `0004_operacao_financeira_segura.sql`.
 3. Em **Project Settings → API**, copie a `Project URL` e a chave `anon public`.
 4. Copie `.env.example` para `.env.local` e preencha:
    ```
@@ -46,18 +46,28 @@ npm run dev
 
 A migração cria as tabelas mas **não** popula `parametros_tributarios` / `regras_distribuicao` com os valores 6% / 30% / 70% — isso é proposital: a regra de distribuição referencia o `id` de sócios reais (`profiles`), que só existem depois do primeiro cadastro.
 
-Não existe um fluxo de "criar sócio" fora do Supabase Auth: **cada sócio entra se cadastrando com o próprio e-mail na tela de login** — isso cria `auth.users` + `profiles` automaticamente. Depois de logado, cada um edita seu próprio nome completo, CPF e chave PIX em **Sócios** (RLS só permite editar o próprio registro).
+Usuário e sócio são cadastros diferentes. `profiles` controla quem acessa o sistema; `socios` controla quem participa financeiramente. Um administrador ou financeiro cadastra os sócios na tela **Sócios**, mesmo que eles nunca tenham login.
 
 Passo a passo:
 
-1. Cadastre-se na tela de login.
-2. Peça para o(s) outro(s) sócio(s) também se cadastrarem — a regra de distribuição só faz sentido depois que todos que vão participar dela já têm conta.
-3. Vá em **Sócios** e complete CPF/chave PIX de cada um (cada sócio só edita o próprio).
+1. Acesse com o usuário administrador inicial.
+2. Vá em **Sócios** e cadastre todas as pessoas que participam financeiramente.
+3. Cadastre nome, CPF, chave PIX e data de entrada. Login é opcional e separado.
 4. Vá em **Parâmetros** e registre:
    - a alíquota tributária vigente (referência inicial: 6%);
    - a regra de distribuição default (referência inicial: 30% empresa / 70% dividido entre os sócios que participarem — a tela suporta 2 ou mais sócios na mesma regra, cada um escolhido por um seletor, não é um campo fixo por nome).
 
 A partir daí, toda receita lançada em **Projetos** grava automaticamente um snapshot desses parâmetros na data do fato gerador — mudar o parâmetro depois não altera receitas já lançadas nem fechamentos já encerrados.
+
+### Começando com uma receita de R$ 200
+
+1. Cadastre os sócios.
+2. Em **Parâmetros**, informe a alíquota e a divisão, por exemplo 30% empresa e 70% sócio.
+3. Crie um projeto para a atividade executada.
+4. Lance R$ 200 como receita e marque como recebida quando o dinheiro entrar.
+5. Lance custos e despesas diretamente ligados à atividade.
+6. No fechamento do mês, somente receitas recebidas entram na apuração. O crédito do sócio e o valor retido pela empresa são calculados a partir do resultado líquido.
+7. A retirada do sócio só é aceita se houver saldo disponível. Despesas corporativas gerais são pagas pela parcela retida da empresa; despesas que devem reduzir o resultado antes da divisão precisam ser vinculadas ao projeto.
 
 ## Estrutura do banco (`supabase/migrations/`)
 

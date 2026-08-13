@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import type { FechamentoMensal } from '../types/database';
 import { relatoriosService } from './relatoriosService';
-import { socioService } from './socioService';
 import { assertNoError } from './base';
 
 function primeiroDiaMes(competencia: string): string {
@@ -37,7 +36,7 @@ export const fechamentoService = {
    * mudanças de parâmetro depois disso não afetam o que já foi
    * apurado, porque cada receita carrega seu próprio snapshot.
    */
-  async fecharMes(competencia: string, userId: string, observacao?: string): Promise<FechamentoMensal> {
+  async fecharMes(competencia: string, _userId: string, observacao?: string): Promise<FechamentoMensal> {
     const inicio = primeiroDiaMes(competencia);
     const fim = ultimoDiaMes(competencia);
 
@@ -46,18 +45,7 @@ export const fechamentoService = {
       throw new Error(`Competência ${inicio} já está fechada.`);
     }
 
-    const dre = await relatoriosService.montarDRE(inicio, fim);
-
-    for (const [socioId, valor] of Object.entries(dre.consolidadoProjetos.porSocio)) {
-      if (valor === 0) continue;
-      await socioService.registrarCredito({
-        socioId,
-        valor,
-        data: fim,
-        descricao: `Resultado apurado no fechamento de ${inicio.slice(0, 7)}`,
-        createdBy: userId,
-      });
-    }
+    const dre = await relatoriosService.montarDRE(inicio, fim, true);
 
     const snapshot = {
       receitaBruta: dre.consolidadoProjetos.receitaBruta,
@@ -72,21 +60,15 @@ export const fechamentoService = {
       projetos: dre.porProjeto.map((p) => ({ projetoId: p.projeto.id, nome: p.projeto.nome, resultado: p.resultado })),
     };
 
-    const { data, error } = await supabase
-      .from('fechamentos_mensais')
-      .upsert(
-        {
-          competencia: inicio,
-          status: 'fechado',
-          fechado_em: new Date().toISOString(),
-          fechado_por: userId,
-          snapshot,
-          observacao: observacao ?? null,
-        },
-        { onConflict: 'competencia' }
-      )
-      .select('*')
-      .single();
+    const creditos = Object.entries(dre.consolidadoProjetos.porSocio)
+      .filter(([, valor]) => valor > 0)
+      .map(([socio_id, valor]) => ({ socio_id, valor }));
+    const { data, error } = await supabase.rpc('fechar_mes', {
+      p_competencia: inicio,
+      p_snapshot: snapshot,
+      p_creditos: creditos,
+      p_observacao: observacao ?? null,
+    });
 
     return assertNoError(data, error, 'fechar mês') as FechamentoMensal;
   },

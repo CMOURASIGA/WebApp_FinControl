@@ -5,18 +5,18 @@ import { Field, Input, Select } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { investimentosService } from '../services/investimentosService';
 import { projetosService } from '../services/projetosService';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
 import { calcularResultadoProjeto, calcularROI } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { Investimento, Profile, Projeto } from '../types/database';
+import type { Investimento, Socio, Projeto } from '../types/database';
 
 export const InvestimentosPage: React.FC = () => {
   const { user } = useAuth();
   const [investimentos, setInvestimentos] = useState<Investimento[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [roiPorProjeto, setRoiPorProjeto] = useState<Record<string, { investido: number; retorno: number; roi: number }>>({});
   const [erro, setErro] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ export const InvestimentosPage: React.FC = () => {
   const [data, setData] = useState(hoje());
 
   const carregar = async () => {
-    const [inv, proj, soc] = await Promise.all([investimentosService.listar(), projetosService.listar(), profilesService.listarSocios()]);
+    const [inv, proj, soc] = await Promise.all([investimentosService.listar(), projetosService.listar(), sociosService.listarAtivos()]);
     setInvestimentos(inv);
     setProjetos(proj);
     setSocios(soc);

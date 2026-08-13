@@ -33,6 +33,9 @@ export const projetosService = {
     origemEconomica: string;
     responsavelComercial?: string;
     responsavelExecucao?: string;
+    originadorSocioId?: string;
+    responsavelComercialSocioId?: string;
+    responsavelExecucaoSocioId?: string;
     observacao?: string;
     createdBy: string;
   }): Promise<Projeto> {
@@ -45,6 +48,9 @@ export const projetosService = {
         origem_economica: input.origemEconomica,
         responsavel_comercial: input.responsavelComercial ?? null,
         responsavel_execucao: input.responsavelExecucao ?? null,
+        originador_socio_id: input.originadorSocioId ?? null,
+        responsavel_comercial_socio_id: input.responsavelComercialSocioId ?? null,
+        responsavel_execucao_socio_id: input.responsavelExecucaoSocioId ?? null,
         observacao: input.observacao ?? null,
         created_by: input.createdBy,
       })

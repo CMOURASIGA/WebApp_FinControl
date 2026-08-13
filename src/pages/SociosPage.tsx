@@ -1,238 +1,66 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Field, Input, Badge } from '../components/ui/Input';
+import { Badge, Field, Input, Select } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
-import { profilesService } from '../services/profilesService';
+import { sociosService } from '../services/sociosService';
 import { socioService } from '../services/socioService';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { Profile, SocioLancamento } from '../types/database';
+import type { Socio, SocioLancamento } from '../types/database';
 
-const TIPO_LABEL: Record<SocioLancamento['tipo'], string> = {
-  credito_resultado: 'Crédito de resultado',
-  retirada: 'Retirada',
-  reembolso: 'Reembolso',
-  ajuste: 'Ajuste',
-};
+const novoSocio = () => ({ nome: '', cpf: '', chavePix: '', email: '', telefone: '', tipo: 'socio' as Socio['tipo'], dataEntrada: hoje() });
+const TIPO_LABEL: Record<SocioLancamento['tipo'], string> = { credito_resultado: 'Crédito de resultado', retirada: 'Retirada', reembolso: 'Reembolso', ajuste: 'Ajuste' };
 
 export const SociosPage: React.FC = () => {
   const { user } = useAuth();
-  const [socios, setSocios] = useState<Profile[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [lancamentos, setLancamentos] = useState<SocioLancamento[]>([]);
-  const [socioSelecionado, setSocioSelecionado] = useState<string>('');
+  const [selecionado, setSelecionado] = useState('');
+  const [form, setForm] = useState(novoSocio());
+  const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-
-  const carregar = async () => {
-    // listarTodos traz também os desativados — é a tela de gestão do
-    // quadro societário, então precisa mostrar todo mundo que já
-    // existiu, não só quem está ativo hoje.
-    const [s, l] = await Promise.all([profilesService.listarTodos(), socioService.listarTodos()]);
-    setSocios(s);
-    setLancamentos(l);
-    if (!socioSelecionado && s.length > 0) setSocioSelecionado(s[0].id);
-  };
-
-  useEffect(() => {
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const socio = socios.find((s) => s.id === socioSelecionado) ?? null;
-
-  const lancamentosDoSocio = useMemo(
-    () => lancamentos.filter((l) => l.socio_id === socioSelecionado).sort((a, b) => (a.data < b.data ? 1 : -1)),
-    [lancamentos, socioSelecionado]
-  );
-  const saldoConta = socioService.calcularSaldo(lancamentosDoSocio);
-
-  // --- dados cadastrais (qualquer sócio ativo pode editar qualquer cadastro) ---
-  const [nomeEdit, setNomeEdit] = useState('');
-  const [cpfEdit, setCpfEdit] = useState('');
-  const [pixEdit, setPixEdit] = useState('');
-
-  useEffect(() => {
-    if (socio) {
-      setNomeEdit(socio.nome);
-      setCpfEdit(socio.cpf ?? '');
-      setPixEdit(socio.chave_pix ?? '');
-    }
-  }, [socio]);
-
-  const salvarDadosCadastrais = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !socio) return;
-    setErro(null);
-    setMsg(null);
-    try {
-      await profilesService.atualizarDadosCadastrais(socio.id, {
-        nome: nomeEdit,
-        cpf: cpfEdit || null,
-        chavePix: pixEdit || null,
-      });
-      setMsg('Dados cadastrais atualizados.');
-      carregar();
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  };
-
-  const alternarAtivo = async () => {
-    if (!socio) return;
-    setErro(null);
-    setMsg(null);
-    try {
-      if (socio.ativo) await profilesService.desativar(socio.id);
-      else await profilesService.reativar(socio.id);
-      setMsg(socio.ativo ? `${socio.nome} foi desativado.` : `${socio.nome} foi reativado.`);
-      carregar();
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  };
-
-  // --- retirada ---
   const [valorRetirada, setValorRetirada] = useState('');
   const [dataRetirada, setDataRetirada] = useState(hoje());
   const [descRetirada, setDescRetirada] = useState('');
 
-  const registrarRetirada = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !socioSelecionado) return;
-    setErro(null);
-    const valor = Number(valorRetirada);
-    if (valor > saldoConta) {
-      setErro(`Atenção: retirar ${formatCurrency(valor)} deixaria o saldo negativo (disponível: ${formatCurrency(saldoConta)}).`);
-      return;
-    }
+  const carregar = async () => {
+    const [s, l] = await Promise.all([sociosService.listarTodos(), socioService.listarTodos()]);
+    setSocios(s); setLancamentos(l);
+    if (!selecionado && s.length) setSelecionado(s[0].id);
+  };
+  useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const socio = socios.find((s) => s.id === selecionado) ?? null;
+  useEffect(() => {
+    if (criando) { setForm(novoSocio()); return; }
+    if (socio) setForm({ nome: socio.nome, cpf: socio.cpf ?? '', chavePix: socio.chave_pix ?? '', email: socio.email ?? '', telefone: socio.telefone ?? '', tipo: socio.tipo, dataEntrada: socio.data_entrada });
+  }, [socio, criando]);
+  const extrato = useMemo(() => lancamentos.filter((l) => l.socio_id === selecionado), [lancamentos, selecionado]);
+  const saldo = socioService.calcularSaldo(extrato);
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!user) return; setErro(null); setMsg(null);
     try {
-      await socioService.registrarRetirada({
-        socioId: socioSelecionado,
-        valor,
-        data: dataRetirada,
-        descricao: descRetirada || undefined,
-        createdBy: user.id,
-      });
-      setValorRetirada('');
-      setDescRetirada('');
-      carregar();
-    } catch (e) {
-      setErro((e as Error).message);
-    }
+      if (criando) { const criado = await sociosService.criar({ ...form, createdBy: user.id }); setCriando(false); setSelecionado(criado.id); setMsg('Sócio cadastrado.'); }
+      else if (socio) { await sociosService.atualizar(socio.id, form); setMsg('Cadastro atualizado.'); }
+      await carregar();
+    } catch (e) { setErro((e as Error).message); }
+  };
+  const alternarAtivo = async () => { if (!socio) return; try { await sociosService.definirAtivo(socio.id, !socio.ativo); await carregar(); } catch (e) { setErro((e as Error).message); } };
+  const retirar = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!socio) return; setErro(null);
+    try { await socioService.registrarRetirada({ socioId: socio.id, valor: Number(valorRetirada), data: dataRetirada, descricao: descRetirada || undefined, createdBy: user?.id ?? '' }); setValorRetirada(''); setDescRetirada(''); await carregar(); setMsg('Retirada registrada.'); }
+    catch (e) { setErro((e as Error).message); }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Sócios</h1>
-        <p className="text-sm text-slate-500">Cadastro societário e conta corrente — direito econômico calculado ≠ valor efetivamente transferido.</p>
-      </div>
-
-      <p className="rounded-md bg-blue-50 px-4 py-2 text-xs text-blue-700">
-        Um novo sócio entra no sistema se cadastrando pela tela de login com o e-mail dele — o registro aparece
-        automaticamente aqui. Qualquer sócio ativo pode completar/editar o cadastro (nome, CPF, chave PIX) de qualquer
-        outro. Não existe exclusão de sócio: para tirar alguém das regras de distribuição e lançamentos novos, use
-        "Desativar" — o histórico dele continua preservado.
-      </p>
-
-      <div className="flex flex-wrap gap-2">
-        {socios.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSocioSelecionado(s.id)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              socioSelecionado === s.id
-                ? 'bg-blue-600 text-white'
-                : s.ativo
-                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-            }`}
-          >
-            {s.nome}
-            {!s.ativo && ' (inativo)'}
-          </button>
-        ))}
-        {socios.length === 0 && <p className="text-sm text-slate-500">Nenhum sócio cadastrado ainda.</p>}
-      </div>
-
-      {erro && <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{erro}</p>}
-      {msg && <p className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">{msg}</p>}
-
-      {socio && (
-        <>
-          <Card className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase text-slate-500">Saldo disponível (conta corrente) — {socio.nome}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(saldoConta)}</p>
-              </div>
-              <Badge tone={socio.ativo ? 'success' : 'neutral'}>{socio.ativo ? 'Ativo' : 'Inativo'}</Badge>
-            </div>
-          </Card>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-slate-900">Dados cadastrais</h2>
-                <button
-                  type="button"
-                  onClick={alternarAtivo}
-                  className={`text-xs font-medium hover:underline ${socio.ativo ? 'text-red-600' : 'text-blue-600'}`}
-                >
-                  {socio.ativo ? 'Desativar sócio' : 'Reativar sócio'}
-                </button>
-              </div>
-              <form onSubmit={salvarDadosCadastrais} className="mt-4 space-y-3">
-                <Field label="Nome completo">
-                  <Input required value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)} />
-                </Field>
-                <Field label="CPF">
-                  <Input value={cpfEdit} onChange={(e) => setCpfEdit(e.target.value)} placeholder="000.000.000-00" />
-                </Field>
-                <Field label="Chave PIX">
-                  <Input value={pixEdit} onChange={(e) => setPixEdit(e.target.value)} placeholder="e-mail, telefone, CPF ou aleatória" />
-                </Field>
-                <Button type="submit" size="sm">Salvar</Button>
-              </form>
-            </Card>
-
-            <Card className="p-6">
-              <h2 className="font-semibold text-slate-900">Registrar retirada</h2>
-              <form onSubmit={registrarRetirada} className="mt-4 space-y-3">
-                <Field label="Valor (R$)">
-                  <Input type="number" step="0.01" min="0" required value={valorRetirada} onChange={(e) => setValorRetirada(e.target.value)} />
-                </Field>
-                <Field label="Data">
-                  <Input type="date" value={dataRetirada} onChange={(e) => setDataRetirada(e.target.value)} />
-                </Field>
-                <Field label="Descrição (opcional)">
-                  <Input value={descRetirada} onChange={(e) => setDescRetirada(e.target.value)} />
-                </Field>
-                <Button type="submit" size="sm">Registrar retirada</Button>
-              </form>
-            </Card>
-          </div>
-
-          <Card className="p-6">
-            <h2 className="font-semibold text-slate-900">Extrato</h2>
-            <div className="mt-3 divide-y divide-slate-100">
-              {lancamentosDoSocio.map((l) => (
-                <div key={l.id} className="flex items-center justify-between py-2 text-sm">
-                  <div>
-                    <p className="font-medium text-slate-800">{l.descricao || TIPO_LABEL[l.tipo]}</p>
-                    <p className="text-xs text-slate-500">{formatDate(l.data)}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge tone={l.tipo === 'retirada' ? 'danger' : 'success'}>{TIPO_LABEL[l.tipo]}</Badge>
-                    <span className="font-medium">{formatCurrency(l.valor)}</span>
-                  </div>
-                </div>
-              ))}
-              {lancamentosDoSocio.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhum lançamento ainda.</p>}
-            </div>
-          </Card>
-        </>
-      )}
-    </div>
-  );
+  return <div className="space-y-6">
+    <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-slate-900">Sócios</h1><p className="text-sm text-slate-500">Cadastro societário, participação e conta corrente.</p></div><Button onClick={() => { setCriando(true); setSelecionado(''); }}>Novo sócio</Button></div>
+    <p className="rounded-md bg-blue-50 px-4 py-2 text-xs text-blue-700">Sócio é um cadastro financeiro e não precisa ter login. Desativar remove das novas escolhas e preserva o histórico.</p>
+    <div className="flex flex-wrap gap-2">{socios.map((s) => <button key={s.id} onClick={() => { setCriando(false); setSelecionado(s.id); }} className={`rounded-full px-4 py-1.5 text-sm ${selecionado === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{s.nome}{!s.ativo && ' (inativo)'}</button>)}</div>
+    {erro && <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{erro}</p>}{msg && <p className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">{msg}</p>}
+    {(criando || socio) && <div className="grid gap-6 lg:grid-cols-2"><Card className="p-6"><div className="flex justify-between"><h2 className="font-semibold">{criando ? 'Cadastrar sócio' : 'Dados cadastrais'}</h2>{socio && !criando && <button onClick={alternarAtivo} className="text-xs font-medium text-blue-600">{socio.ativo ? 'Desativar' : 'Reativar'}</button>}</div>
+      <form onSubmit={salvar} className="mt-4 grid gap-3 sm:grid-cols-2"><Field label="Nome completo" className="sm:col-span-2"><Input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}/></Field><Field label="CPF"><Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })}/></Field><Field label="Chave PIX"><Input value={form.chavePix} onChange={(e) => setForm({ ...form, chavePix: e.target.value })}/></Field><Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}/></Field><Field label="Telefone"><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })}/></Field><Field label="Tipo"><Select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Socio['tipo'] })}><option value="socio">Sócio</option><option value="investidor">Investidor</option></Select></Field><Field label="Entrada"><Input type="date" value={form.dataEntrada} onChange={(e) => setForm({ ...form, dataEntrada: e.target.value })}/></Field><Button type="submit" className="sm:col-span-2">Salvar cadastro</Button></form></Card>
+      {socio && !criando && <Card className="p-6"><div className="flex items-center justify-between"><div><p className="text-xs uppercase text-slate-500">Disponível para retirada</p><p className="text-2xl font-bold">{formatCurrency(saldo)}</p></div><Badge tone={socio.ativo ? 'success' : 'neutral'}>{socio.ativo ? 'Ativo' : 'Inativo'}</Badge></div><form onSubmit={retirar} className="mt-4 space-y-3"><Field label="Valor"><Input type="number" min="0.01" step="0.01" required value={valorRetirada} onChange={(e) => setValorRetirada(e.target.value)}/></Field><Field label="Data"><Input type="date" value={dataRetirada} onChange={(e) => setDataRetirada(e.target.value)}/></Field><Field label="Descrição"><Input value={descRetirada} onChange={(e) => setDescRetirada(e.target.value)}/></Field><Button type="submit" disabled={!socio.ativo}>Registrar retirada</Button></form></Card>}</div>}
+    {socio && !criando && <Card className="p-6"><h2 className="font-semibold">Extrato societário</h2><div className="mt-3 divide-y">{extrato.map((l) => <div key={l.id} className="flex justify-between py-2 text-sm"><span>{l.descricao || TIPO_LABEL[l.tipo]} <small className="text-slate-400">{formatDate(l.data)}</small></span><span className={l.tipo === 'retirada' ? 'text-red-600' : 'text-green-700'}>{l.tipo === 'retirada' ? '-' : '+'}{formatCurrency(l.valor)}</span></div>)}{!extrato.length && <p className="py-2 text-sm text-slate-500">Nenhuma movimentação.</p>}</div></Card>}
+  </div>;
 };

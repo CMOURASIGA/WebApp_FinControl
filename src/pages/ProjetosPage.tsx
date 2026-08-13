@@ -5,7 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { useAuth } from '../contexts/AuthContext';
 import { clientesService, projetosService } from '../services/projetosService';
-import type { Cliente, Projeto } from '../types/database';
+import { sociosService } from '../services/sociosService';
+import type { Cliente, Projeto, Socio } from '../types/database';
 
 const TIPO_LABEL: Record<Projeto['tipo'], string> = {
   servico: 'Serviço',
@@ -19,6 +20,7 @@ export const ProjetosPage: React.FC = () => {
   const { user } = useAuth();
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -27,11 +29,15 @@ export const ProjetosPage: React.FC = () => {
   const [origem, setOrigem] = useState('compartilhado');
   const [clienteId, setClienteId] = useState('');
   const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [originadorSocioId, setOriginadorSocioId] = useState('');
+  const [responsavelComercialSocioId, setResponsavelComercialSocioId] = useState('');
+  const [responsavelExecucaoSocioId, setResponsavelExecucaoSocioId] = useState('');
 
   const carregar = async () => {
-    const [p, c] = await Promise.all([projetosService.listar(), clientesService.listar()]);
+    const [p, c, s] = await Promise.all([projetosService.listar(), clientesService.listar(), sociosService.listarAtivos()]);
     setProjetos(p);
     setClientes(c);
+    setSocios(s);
   };
 
   useEffect(() => {
@@ -54,6 +60,9 @@ export const ProjetosPage: React.FC = () => {
         tipo,
         origemEconomica: origem,
         createdBy: user.id,
+        originadorSocioId: originadorSocioId || undefined,
+        responsavelComercialSocioId: responsavelComercialSocioId || undefined,
+        responsavelExecucaoSocioId: responsavelExecucaoSocioId || undefined,
       });
       setNome('');
       setNovoClienteNome('');
@@ -104,6 +113,15 @@ export const ProjetosPage: React.FC = () => {
             </Field>
             <Field label="Origem econômica" className="sm:col-span-2" hint="Descritivo: de quem é o negócio (ex.: Christian, Sócio, Compartilhado)">
               <Input value={origem} onChange={(e) => setOrigem(e.target.value)} />
+            </Field>
+            <Field label="Sócio originador">
+              <Select value={originadorSocioId} onChange={(e) => setOriginadorSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
+            </Field>
+            <Field label="Responsável comercial">
+              <Select value={responsavelComercialSocioId} onChange={(e) => setResponsavelComercialSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
+            </Field>
+            <Field label="Responsável pela execução" className="sm:col-span-2">
+              <Select value={responsavelExecucaoSocioId} onChange={(e) => setResponsavelExecucaoSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
             </Field>
             {erro && <p className="text-sm text-red-600 sm:col-span-2">{erro}</p>}
             <Button type="submit" className="sm:col-span-2">Criar projeto</Button>
