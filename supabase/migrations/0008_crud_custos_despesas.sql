@@ -27,7 +27,11 @@ grant select,insert on public.financeiro_historico to authenticated;
 
 create or replace function public.bloquear_custo_despesa_fechada() returns trigger language plpgsql set search_path=public,pg_temp as $$
 declare v_data date;
-begin v_data:=case when tg_table_name='despesas' then old.competencia else old.data end;
+begin
+ if tg_table_name='despesas' then v_data:=old.competencia;
+ elsif tg_table_name='custos_projeto' then v_data:=old.data;
+ else raise exception 'Tabela não suportada pelo bloqueio de competência: %',tg_table_name;
+ end if;
  if private.competencia_fechada(v_data) then raise exception 'Competência fechada: o lançamento não pode ser alterado.'; end if;
  return case when tg_op='DELETE' then old else new end;
 end;$$;
