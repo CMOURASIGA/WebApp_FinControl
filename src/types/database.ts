@@ -196,8 +196,16 @@ export interface Investimento {
   roi_meta_percentual: number | null;
   considerado_no_resultado: boolean;
   data_encerramento: string | null;
+  status: 'ativo' | 'cancelado';
+  updated_at: string;
   created_by: string | null;
   created_at: string;
+}
+
+export interface InvestimentoHistorico {
+  id: string; investimento_id: string; acao: 'edicao' | 'cancelamento' | 'reativacao';
+  dados_anteriores: Partial<Investimento> | null; dados_novos: Partial<Investimento> | null;
+  motivo: string; executado_por: string | null; executado_em: string;
 }
 
 export interface SocioLancamento {
