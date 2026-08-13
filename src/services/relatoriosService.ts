@@ -53,8 +53,10 @@ export function montarDREDeDados(
 ): DREPeriodo {
   const despesasValidas = despesas.filter((d) => d.status !== 'cancelado');
   const custosValidos = custos.filter((c) => c.status !== 'cancelado');
-  const despesasCorporativas = despesasValidas.filter((d) => d.projeto_id === null);
-  const despesasPorProjeto = despesasValidas.filter((d) => d.projeto_id !== null);
+  // A natureza da despesa é definida pelo tipo. O vínculo com projeto é
+  // usado como proteção adicional para dados antigos ou incompletos.
+  const despesasCorporativas = despesasValidas.filter((d) => d.tipo !== 'projeto' || !d.projeto_id);
+  const despesasPorProjeto = despesasValidas.filter((d) => d.tipo === 'projeto' && Boolean(d.projeto_id));
 
   const porProjeto: { projeto: Projeto; resultado: ResultadoProjeto }[] = [];
 

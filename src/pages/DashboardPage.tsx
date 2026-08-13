@@ -55,8 +55,11 @@ export const DashboardPage: React.FC = () => {
   const clientesAtivos = useMemo(() => new Set(assinaturas.filter((a) => a.status === 'ativa').map((a) => a.cliente_id)).size, [assinaturas]);
   const ticketMedio = clientesAtivos > 0 ? mrr / clientesAtivos : 0;
 
+  const resultadoLiquidoEmpresa = dre
+    ? dre.consolidadoProjetos.resultadoLiquido - dre.despesasCorporativas
+    : 0;
   const margem = dre && dre.consolidadoProjetos.receitaBruta > 0
-    ? (dre.consolidadoProjetos.resultadoLiquido / dre.consolidadoProjetos.receitaBruta) * 100
+    ? (resultadoLiquidoEmpresa / dre.consolidadoProjetos.receitaBruta) * 100
     : 0;
 
   if (carregando) return <p className="text-sm text-slate-500">Carregando painel...</p>;
@@ -88,10 +91,15 @@ export const DashboardPage: React.FC = () => {
           />
           <StatCard label="Impostos provisionados" value={formatCurrency(dre.consolidadoProjetos.tributoProvisionado)} tone="negative" />
           <StatCard label="Custos + despesas" value={formatCurrency(dre.consolidadoProjetos.custosDiretos + dre.consolidadoProjetos.despesasAtribuidas + dre.despesasCorporativas)} tone="negative" />
-          <StatCard label="Resultado líquido" value={formatCurrency(dre.consolidadoProjetos.resultadoLiquido - dre.despesasCorporativas)} tone="positive" />
+          <StatCard label="Resultado líquido" value={formatCurrency(resultadoLiquidoEmpresa)} tone="positive" />
           <StatCard label="Margem líquida" value={`${margem.toFixed(1)}%`} />
           <StatCard label="Retido pela empresa (líquido)" value={formatCurrency(dre.valorEmpresaLiquido)} />
           <StatCard label="Reserva Consult Services" value={formatCurrency(reservaEmpresa)} />
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Custos diretos de projetos" value={formatCurrency(dre.consolidadoProjetos.custosDiretos)} tone="negative" />
+          <StatCard label="Despesas atribuídas a projetos" value={formatCurrency(dre.consolidadoProjetos.despesasAtribuidas)} tone="negative" />
+          <StatCard label="Despesas corporativas" value={formatCurrency(dre.despesasCorporativas)} tone="negative" />
         </div>
       </section>
 
