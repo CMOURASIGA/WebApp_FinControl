@@ -7,7 +7,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const fieldBase =
-  'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400';
+  'w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 disabled:bg-slate-50 disabled:text-slate-400';
 
 interface FieldWrapperProps {
   label?: string;

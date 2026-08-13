@@ -130,6 +130,10 @@ export interface Receita {
   created_at: string;
   updated_at: string;
   receita_origem_id: string | null;
+  emite_nota: boolean;
+  tem_retencao: boolean;
+  percentual_retencao: number;
+  valor_retido: number;
 }
 
 export interface ReceitaHistorico {

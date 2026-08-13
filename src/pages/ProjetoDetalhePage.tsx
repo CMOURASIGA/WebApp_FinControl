@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,44 +70,52 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [valorBruto, setValorBruto] = useState('');
   const [tipoReceita, setTipoReceita] = useState<Receita['tipo']>('pontual');
   const [dataFato, setDataFato] = useState(hoje());
+  const [emiteNota, setEmiteNota] = useState<boolean | null>(null);
+  const [temRetencao, setTemRetencao] = useState(false);
+  const [percentualRetencao, setPercentualRetencao] = useState('0');
   const [editando, setEditando] = useState<Receita | null>(null);
   const [editDescricao, setEditDescricao] = useState('');
   const [editValor, setEditValor] = useState('');
   const [editTipo, setEditTipo] = useState<Receita['tipo']>('pontual');
   const [editData, setEditData] = useState(hoje());
   const [motivo, setMotivo] = useState('');
+  const [editEmiteNota, setEditEmiteNota] = useState(true);
+  const [editTemRetencao, setEditTemRetencao] = useState(false);
+  const [editPercentualRetencao, setEditPercentualRetencao] = useState('0');
+  const [acaoModal, setAcaoModal] = useState<{ receita: Receita; acao: 'cancelar' | 'estornar' | 'reativar' | 'corrigir' } | null>(null);
+  const [valorCorreto, setValorCorreto] = useState('');
   const [historico, setHistorico] = useState<ReceitaHistorico[]>([]);
   const [historicoDe, setHistoricoDe] = useState<string | null>(null);
 
   const iniciarEdicao = (r: Receita) => {
     setEditando(r); setEditDescricao(r.descricao); setEditValor(String(r.valor_bruto));
     setEditTipo(r.tipo === 'ajuste' ? 'pontual' : r.tipo); setEditData(r.data_fato_gerador); setMotivo('');
+    setEditEmiteNota(r.emite_nota); setEditTemRetencao(r.tem_retencao); setEditPercentualRetencao(String(r.percentual_retencao ?? 0));
   };
   const salvarEdicao = async (e: React.FormEvent) => {
     e.preventDefault(); if (!editando) return; setErro(null);
-    try { await receitasService.editar(editando, { descricao: editDescricao, tipo: editTipo, valorBruto: Number(editValor), dataPrevista: editData, dataFatoGerador: editData, motivo }); setEditando(null); await carregar(); }
+    try { await receitasService.editar(editando, { descricao: editDescricao, tipo: editTipo, valorBruto: Number(editValor), dataPrevista: editData, dataFatoGerador: editData, motivo, emiteNota: editEmiteNota, temRetencao: editTemRetencao, percentualRetencao: Number(editPercentualRetencao) }); setEditando(null); await carregar(); }
     catch (e) { setErro((e as Error).message); }
   };
-  const executarAcao = async (r: Receita, acao: 'cancelar' | 'estornar' | 'reativar' | 'corrigir') => {
-    const texto = window.prompt(acao === 'corrigir' ? 'Informe o motivo da correção:' : 'Informe o motivo desta ação:');
-    if (!texto) return;
+  const abrirAcao = (receita: Receita, acao: 'cancelar' | 'estornar' | 'reativar' | 'corrigir') => {
+    setMotivo(''); setValorCorreto(String(receita.valor_bruto)); setAcaoModal({ receita, acao });
+  };
+  const confirmarAcao = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!acaoModal || !motivo.trim()) return;
+    const { receita: r, acao } = acaoModal;
     try {
-      if (acao === 'cancelar') await receitasService.cancelar(r.id, texto);
-      if (acao === 'estornar') await receitasService.estornarRecebimento(r.id, texto);
-      if (acao === 'reativar') await receitasService.reativar(r.id, texto);
-      if (acao === 'corrigir') {
-        const valor = window.prompt(`Valor original: ${formatCurrency(r.valor_bruto)}. Informe o valor correto:`);
-        if (valor === null || Number.isNaN(Number(valor))) return;
-        await receitasService.corrigirFechada(r.id, Number(valor), texto);
-      }
-      await carregar();
+      if (acao === 'cancelar') await receitasService.cancelar(r.id, motivo);
+      if (acao === 'estornar') await receitasService.estornarRecebimento(r.id, motivo);
+      if (acao === 'reativar') await receitasService.reativar(r.id, motivo);
+      if (acao === 'corrigir') await receitasService.corrigirFechada(r.id, Number(valorCorreto), motivo);
+      setAcaoModal(null); await carregar();
     } catch (e) { setErro((e as Error).message); }
   };
   const abrirHistorico = async (r: Receita) => { try { setHistorico(await receitasService.listarHistorico(r.id)); setHistoricoDe(r.id); } catch (e) { setErro((e as Error).message); } };
 
   const criarReceita = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !id) return;
+    if (!user || !id || emiteNota === null) return;
     setErro(null);
     try {
       await receitasService.criar({
@@ -117,9 +126,13 @@ export const ProjetoDetalhePage: React.FC = () => {
         dataPrevista: dataFato,
         dataFatoGerador: dataFato,
         createdBy: user.id,
+        emiteNota,
+        temRetencao,
+        percentualRetencao: Number(percentualRetencao),
       });
       setDescricao('');
       setValorBruto('');
+      setEmiteNota(null); setTemRetencao(false); setPercentualRetencao('0');
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -275,17 +288,29 @@ export const ProjetoDetalhePage: React.FC = () => {
           <Field label="Data do fato gerador">
             <Input type="date" value={dataFato} onChange={(e) => setDataFato(e.target.value)} />
           </Field>
+          <Field label="Emite nota fiscal?">
+            <Select required value={emiteNota === null ? '' : String(emiteNota)} onChange={(e) => { const valor = e.target.value === 'true'; setEmiteNota(valor); if (!valor) { setTemRetencao(false); setPercentualRetencao('0'); } }}>
+              <option value="" disabled>Selecione</option><option value="true">Sim</option><option value="false">Não</option>
+            </Select>
+          </Field>
+          {emiteNota && <Field label="Possui retenção?"><Select value={String(temRetencao)} onChange={(e) => setTemRetencao(e.target.value === 'true')}><option value="false">Não</option><option value="true">Sim</option></Select></Field>}
+          {emiteNota && temRetencao && <Field label="Retenção (%)"><Input type="number" min="0" max="100" step="0.001" required value={percentualRetencao} onChange={(e) => setPercentualRetencao(e.target.value)} /></Field>}
           <Button type="submit" size="sm" className="sm:col-span-5">Lançar receita</Button>
         </form>
 
-        {editando && <form onSubmit={salvarEdicao} className="mt-5 grid gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:grid-cols-5 sm:items-end">
-          <Field label="Descrição" className="sm:col-span-2"><Input required value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} /></Field>
-          <Field label="Valor"><Input type="number" min="0" step="0.01" required value={editValor} onChange={(e) => setEditValor(e.target.value)} /></Field>
-          <Field label="Tipo"><Select value={editTipo} onChange={(e) => setEditTipo(e.target.value as Receita['tipo'])}><option value="pontual">Pontual</option><option value="recorrente">Recorrente</option></Select></Field>
-          <Field label="Data"><Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} /></Field>
-          <Field label="Motivo da correção" className="sm:col-span-4"><Input required value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: valor digitado incorretamente" /></Field>
-          <div className="flex gap-2"><Button type="submit" size="sm">Salvar</Button><Button type="button" size="sm" variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button></div>
-        </form>}
+        <Modal aberto={Boolean(editando)} titulo="Editar receita" descricao="A alteração ficará registrada no histórico financeiro." onClose={() => setEditando(null)} largura="lg">
+          <form onSubmit={salvarEdicao} className="grid gap-4 sm:grid-cols-2">
+            <Field label="Descrição" className="sm:col-span-2"><Input required value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} /></Field>
+            <Field label="Valor"><Input type="number" min="0" step="0.01" required value={editValor} onChange={(e) => setEditValor(e.target.value)} /></Field>
+            <Field label="Tipo"><Select value={editTipo} onChange={(e) => setEditTipo(e.target.value as Receita['tipo'])}><option value="pontual">Pontual</option><option value="recorrente">Recorrente</option></Select></Field>
+            <Field label="Data"><Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} /></Field>
+            <Field label="Emite nota fiscal?"><Select value={String(editEmiteNota)} onChange={(e) => { const valor = e.target.value === 'true'; setEditEmiteNota(valor); if (!valor) { setEditTemRetencao(false); setEditPercentualRetencao('0'); } }}><option value="true">Sim</option><option value="false">Não</option></Select></Field>
+            {editEmiteNota && <Field label="Possui retenção?"><Select value={String(editTemRetencao)} onChange={(e) => setEditTemRetencao(e.target.value === 'true')}><option value="false">Não</option><option value="true">Sim</option></Select></Field>}
+            {editEmiteNota && editTemRetencao && <Field label="Retenção (%)"><Input type="number" min="0" max="100" step="0.001" required value={editPercentualRetencao} onChange={(e) => setEditPercentualRetencao(e.target.value)} /></Field>}
+            <Field label="Motivo da correção" className="sm:col-span-2"><Input required value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: valor digitado incorretamente" /></Field>
+            <div className="flex justify-end gap-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={() => setEditando(null)}>Voltar</Button><Button type="submit">Salvar alteração</Button></div>
+          </form>
+        </Modal>
 
         <div className="mt-4 divide-y divide-slate-100">
           {receitas.map((r) => (
@@ -293,7 +318,7 @@ export const ProjetoDetalhePage: React.FC = () => {
               <div>
                 <p className="font-medium text-slate-800">{r.descricao}</p>
                 <p className="text-xs text-slate-500">
-                  {formatDate(r.data_fato_gerador)} · alíquota aplicada {r.aliquota_aplicada}%{r.receita_origem_id && ' · ajuste de receita anterior'}
+                  {formatDate(r.data_fato_gerador)} · {r.emite_nota ? `nota fiscal · imposto ${r.aliquota_aplicada}%${r.tem_retencao ? ` · retenção ${r.percentual_retencao}% (${formatCurrency(r.valor_retido)})` : ''}` : 'sem nota fiscal · sem imposto'}{r.receita_origem_id && ' · ajuste de receita anterior'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -311,17 +336,24 @@ export const ProjetoDetalhePage: React.FC = () => {
                   </button>
                 )}
                 {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
-                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => executarAcao(r, 'cancelar')}>cancelar</button>}
-                {r.tipo !== 'ajuste' && r.status === 'recebido' && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => executarAcao(r, 'estornar')}>estornar recebimento</button>}
-                {r.tipo !== 'ajuste' && r.status === 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => executarAcao(r, 'reativar')}>reativar</button>}
-                {r.tipo !== 'ajuste' && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => executarAcao(r, 'corrigir')}>corrigir valor fechado</button>}
+                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => abrirAcao(r, 'cancelar')}>cancelar</button>}
+                {r.tipo !== 'ajuste' && r.status === 'recebido' && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => abrirAcao(r, 'estornar')}>estornar recebimento</button>}
+                {r.tipo !== 'ajuste' && r.status === 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => abrirAcao(r, 'reativar')}>reativar</button>}
+                {r.tipo !== 'ajuste' && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => abrirAcao(r, 'corrigir')}>corrigir valor fechado</button>}
                 <button className="text-xs font-medium text-slate-500 hover:underline" onClick={() => abrirHistorico(r)}>histórico</button>
               </div>
             </div>
           ))}
           {receitas.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhuma receita lançada.</p>}
         </div>
-        {historicoDe && <div className="mt-4 rounded-lg border border-slate-200 p-4"><div className="flex justify-between"><h3 className="text-sm font-semibold">Histórico da receita</h3><button className="text-xs text-slate-500" onClick={() => setHistoricoDe(null)}>fechar</button></div><div className="mt-2 divide-y">{historico.map((h) => <div key={h.id} className="py-2 text-xs"><span className="font-medium">{h.acao.replace(/_/g, ' ')}</span><span className="ml-2 text-slate-500">{new Date(h.executado_em).toLocaleString('pt-BR')}</span>{h.motivo && <p className="text-slate-600">Motivo: {h.motivo}</p>}</div>)}{!historico.length && <p className="text-xs text-slate-500">Ainda não existem alterações.</p>}</div></div>}
+        <Modal aberto={Boolean(historicoDe)} titulo="Histórico da receita" descricao="Registro das alterações e dos responsáveis por cada ação." onClose={() => setHistoricoDe(null)}><div className="divide-y">{historico.map((h) => <div key={h.id} className="py-3 text-sm"><span className="font-medium capitalize">{h.acao.replace(/_/g, ' ')}</span><span className="ml-2 text-xs text-slate-500">{new Date(h.executado_em).toLocaleString('pt-BR')}</span>{h.motivo && <p className="mt-1 text-slate-600">Motivo: {h.motivo}</p>}</div>)}{!historico.length && <p className="text-sm text-slate-500">Ainda não existem alterações.</p>}</div></Modal>
+        <Modal aberto={Boolean(acaoModal)} titulo={acaoModal?.acao === 'corrigir' ? 'Corrigir receita fechada' : acaoModal?.acao === 'estornar' ? 'Estornar recebimento' : acaoModal?.acao === 'reativar' ? 'Reativar receita' : 'Cancelar receita'} descricao="Informe os dados abaixo para registrar a ação com segurança." onClose={() => setAcaoModal(null)}>
+          <form onSubmit={confirmarAcao} className="space-y-4">
+            {acaoModal?.acao === 'corrigir' && <Field label="Valor correto" hint={acaoModal ? `Valor original: ${formatCurrency(acaoModal.receita.valor_bruto)}` : undefined}><Input type="number" step="0.01" min="0" required value={valorCorreto} onChange={(e) => setValorCorreto(e.target.value)} /></Field>}
+            <Field label="Motivo"><Input required autoFocus value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Descreva por que esta ação é necessária" /></Field>
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setAcaoModal(null)}>Voltar</Button><Button type="submit" variant={acaoModal?.acao === 'cancelar' ? 'danger' : 'primary'}>Confirmar</Button></div>
+          </form>
+        </Modal>
       </Card>
 
       {/* Custos diretos */}

@@ -1,8 +1,6 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 7Finance
 
-# Consult Services — Finance 2027
+Gestão financeira e societária, uma plataforma da Consult Services Tecnologia.
 
 Sistema financeiro da Consult Services: tributação, custos diretos de projeto, despesas corporativas, distribuição de resultado entre sócios, conta corrente, investimentos/ROI, receita recorrente (MRR/ARR), simulador tributário e fechamento mensal com DRE gerencial.
 
@@ -12,6 +10,7 @@ Este projeto substitui o antigo protótipo de controle financeiro pessoal (local
 
 1. **Nenhum valor recebido é considerado disponível para distribuição** antes de passar por tributo, custo direto do projeto, despesa e reserva da empresa.
 2. **A distribuição é calculada por projeto**, conforme a regra de participação vigente daquele projeto — nunca sobre o faturamento consolidado da empresa.
+3. **Imposto só incide sobre receita com nota fiscal.** Receita sem nota tem alíquota, provisão e retenção zeradas. A retenção na fonte é registrada como quitação parcial do tributo, sem ser descontada duas vezes do resultado.
 
 Consequência direta: **alíquota tributária, percentual de reserva da empresa e split entre sócios nunca são constantes no código.** Vivem no banco como parâmetros configuráveis com vigência (`vigencia_inicio` / `vigencia_fim`) e podem ter escopo default (empresa) ou específico por projeto. Mudar um número é uma operação de configuração na tela **Parâmetros**, não um deploy.
 

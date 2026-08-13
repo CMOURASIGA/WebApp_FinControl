@@ -47,6 +47,9 @@ export const receitasService = {
     tipoParaTributo?: string;
     observacao?: string;
     createdBy: string;
+    emiteNota: boolean;
+    temRetencao: boolean;
+    percentualRetencao: number;
   }): Promise<Receita> {
     const [{ data: tributos, error: errTributos }, { data: regras, error: errRegras }] = await Promise.all([
       supabase.from('parametros_tributarios').select('*'),
@@ -62,6 +65,10 @@ export const receitasService = {
       regras ?? [],
       input.tipoParaTributo ?? 'geral'
     );
+    if (!input.emiteNota) {
+      snapshot.parametro_tributario_id = null;
+      snapshot.aliquota_aplicada = 0;
+    }
 
     if (!snapshot.regra_distribuicao_id) {
       throw new Error(
@@ -86,6 +93,10 @@ export const receitasService = {
         split_socios_aplicado: snapshot.split_socios_aplicado,
         observacao: input.observacao ?? null,
         created_by: input.createdBy,
+        emite_nota: input.emiteNota,
+        tem_retencao: input.emiteNota && input.temRetencao,
+        percentual_retencao: input.emiteNota && input.temRetencao ? input.percentualRetencao : 0,
+        valor_retido: input.emiteNota && input.temRetencao ? Number(((input.valorBruto * input.percentualRetencao) / 100).toFixed(2)) : 0,
       })
       .select('*')
       .single();
@@ -98,12 +109,13 @@ export const receitasService = {
     if (error) throw new Error(`marcar receita como recebida: ${error.message}`);
   },
 
-  async editar(receita: Receita, input: { descricao: string; tipo: Receita['tipo']; valorBruto: number; dataPrevista: string; dataFatoGerador: string; motivo: string }): Promise<void> {
+  async editar(receita: Receita, input: { descricao: string; tipo: Receita['tipo']; valorBruto: number; dataPrevista: string; dataFatoGerador: string; motivo: string; emiteNota: boolean; temRetencao: boolean; percentualRetencao: number }): Promise<void> {
     const [{ data: tributos, error: et }, { data: regras, error: er }] = await Promise.all([
       supabase.from('parametros_tributarios').select('*'), supabase.from('regras_distribuicao').select('*'),
     ]);
     if (et) throw et; if (er) throw er;
     const snapshot = montarSnapshotReceita(input.dataFatoGerador, receita.projeto_id, tributos ?? [], regras ?? []);
+    if (!input.emiteNota) { snapshot.parametro_tributario_id = null; snapshot.aliquota_aplicada = 0; }
     const { error } = await supabase.rpc('editar_receita', {
       p_receita_id: receita.id, p_descricao: input.descricao, p_tipo: input.tipo,
       p_valor_bruto: input.valorBruto, p_data_prevista: input.dataPrevista,
@@ -112,6 +124,9 @@ export const receitasService = {
       p_regra_distribuicao_id: snapshot.regra_distribuicao_id,
       p_percentual_empresa_aplicado: snapshot.percentual_empresa_aplicado,
       p_split_socios_aplicado: snapshot.split_socios_aplicado,
+      p_emite_nota: input.emiteNota,
+      p_tem_retencao: input.emiteNota && input.temRetencao,
+      p_percentual_retencao: input.emiteNota && input.temRetencao ? input.percentualRetencao : 0,
     });
     if (error) throw new Error(`editar receita: ${error.message}`);
   },
