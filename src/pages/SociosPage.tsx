@@ -24,7 +24,10 @@ export const SociosPage: React.FC = () => {
   const [msg, setMsg] = useState<string | null>(null);
 
   const carregar = async () => {
-    const [s, l] = await Promise.all([profilesService.listarSocios(), socioService.listarTodos()]);
+    // listarTodos traz também os desativados — é a tela de gestão do
+    // quadro societário, então precisa mostrar todo mundo que já
+    // existiu, não só quem está ativo hoje.
+    const [s, l] = await Promise.all([profilesService.listarTodos(), socioService.listarTodos()]);
     setSocios(s);
     setLancamentos(l);
     if (!socioSelecionado && s.length > 0) setSocioSelecionado(s[0].id);
@@ -36,7 +39,6 @@ export const SociosPage: React.FC = () => {
   }, []);
 
   const socio = socios.find((s) => s.id === socioSelecionado) ?? null;
-  const ehVocê = socio?.id === user?.id;
 
   const lancamentosDoSocio = useMemo(
     () => lancamentos.filter((l) => l.socio_id === socioSelecionado).sort((a, b) => (a.data < b.data ? 1 : -1)),
@@ -44,7 +46,7 @@ export const SociosPage: React.FC = () => {
   );
   const saldoConta = socioService.calcularSaldo(lancamentosDoSocio);
 
-  // --- dados cadastrais ---
+  // --- dados cadastrais (qualquer sócio ativo pode editar qualquer cadastro) ---
   const [nomeEdit, setNomeEdit] = useState('');
   const [cpfEdit, setCpfEdit] = useState('');
   const [pixEdit, setPixEdit] = useState('');
@@ -69,6 +71,20 @@ export const SociosPage: React.FC = () => {
         chavePix: pixEdit || null,
       });
       setMsg('Dados cadastrais atualizados.');
+      carregar();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
+  const alternarAtivo = async () => {
+    if (!socio) return;
+    setErro(null);
+    setMsg(null);
+    try {
+      if (socio.ativo) await profilesService.desativar(socio.id);
+      else await profilesService.reativar(socio.id);
+      setMsg(socio.ativo ? `${socio.nome} foi desativado.` : `${socio.nome} foi reativado.`);
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -114,20 +130,26 @@ export const SociosPage: React.FC = () => {
 
       <p className="rounded-md bg-blue-50 px-4 py-2 text-xs text-blue-700">
         Um novo sócio entra no sistema se cadastrando pela tela de login com o e-mail dele — o registro aparece
-        automaticamente aqui. Depois disso, ele mesmo completa CPF e chave PIX (por segurança, cada sócio só edita o
-        próprio cadastro).
+        automaticamente aqui. Qualquer sócio ativo pode completar/editar o cadastro (nome, CPF, chave PIX) de qualquer
+        outro. Não existe exclusão de sócio: para tirar alguém das regras de distribuição e lançamentos novos, use
+        "Desativar" — o histórico dele continua preservado.
       </p>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {socios.map((s) => (
           <button
             key={s.id}
             onClick={() => setSocioSelecionado(s.id)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              socioSelecionado === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              socioSelecionado === s.id
+                ? 'bg-blue-600 text-white'
+                : s.ativo
+                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
             }`}
           >
             {s.nome}
+            {!s.ativo && ' (inativo)'}
           </button>
         ))}
         {socios.length === 0 && <p className="text-sm text-slate-500">Nenhum sócio cadastrado ainda.</p>}
@@ -139,25 +161,38 @@ export const SociosPage: React.FC = () => {
       {socio && (
         <>
           <Card className="p-5">
-            <p className="text-xs font-medium uppercase text-slate-500">Saldo disponível (conta corrente) — {socio.nome}</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(saldoConta)}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase text-slate-500">Saldo disponível (conta corrente) — {socio.nome}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(saldoConta)}</p>
+              </div>
+              <Badge tone={socio.ativo ? 'success' : 'neutral'}>{socio.ativo ? 'Ativo' : 'Inativo'}</Badge>
+            </div>
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <h2 className="font-semibold text-slate-900">Dados cadastrais</h2>
-              {!ehVocê && <p className="mt-1 text-xs text-slate-500">Somente {socio.nome} pode editar este cadastro.</p>}
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-slate-900">Dados cadastrais</h2>
+                <button
+                  type="button"
+                  onClick={alternarAtivo}
+                  className={`text-xs font-medium hover:underline ${socio.ativo ? 'text-red-600' : 'text-blue-600'}`}
+                >
+                  {socio.ativo ? 'Desativar sócio' : 'Reativar sócio'}
+                </button>
+              </div>
               <form onSubmit={salvarDadosCadastrais} className="mt-4 space-y-3">
                 <Field label="Nome completo">
-                  <Input required disabled={!ehVocê} value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)} />
+                  <Input required value={nomeEdit} onChange={(e) => setNomeEdit(e.target.value)} />
                 </Field>
                 <Field label="CPF">
-                  <Input disabled={!ehVocê} value={cpfEdit} onChange={(e) => setCpfEdit(e.target.value)} placeholder="000.000.000-00" />
+                  <Input value={cpfEdit} onChange={(e) => setCpfEdit(e.target.value)} placeholder="000.000.000-00" />
                 </Field>
                 <Field label="Chave PIX">
-                  <Input disabled={!ehVocê} value={pixEdit} onChange={(e) => setPixEdit(e.target.value)} placeholder="e-mail, telefone, CPF ou aleatória" />
+                  <Input value={pixEdit} onChange={(e) => setPixEdit(e.target.value)} placeholder="e-mail, telefone, CPF ou aleatória" />
                 </Field>
-                {ehVocê && <Button type="submit" size="sm">Salvar</Button>}
+                <Button type="submit" size="sm">Salvar</Button>
               </form>
             </Card>
 
