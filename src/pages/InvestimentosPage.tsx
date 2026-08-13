@@ -189,7 +189,7 @@ export const InvestimentosPage: React.FC = () => {
             {Object.entries(roiPorProjeto).map(([pid, r]) => (
               <div key={pid} className="grid gap-2 py-3 text-sm sm:grid-cols-[1.2fr_2fr_1fr] sm:items-center">
                 <span className="font-medium text-slate-800">{nomeDoProjeto(pid)}</span>
-                <span className="text-slate-500">investido {formatCurrency(r.investido)} · resultado operacional realizado {formatCurrency(r.retorno)} · payback {r.payback ? `${r.payback} meses` : 'ainda não atingido'}</span>
+                <span className="text-slate-500">investido {formatCurrency(r.investido)} · resultado operacional realizado {formatCurrency(r.retorno)} · payback {r.payback ? `${r.payback} ${r.payback === 1 ? 'mês' : 'meses'}` : 'ainda não atingido'}</span>
                 <span className={`font-semibold sm:text-right ${r.roi >= (r.meta ?? 0) ? 'text-green-600' : 'text-amber-600'}`}>ROI {r.roi.toFixed(1)}%{r.meta !== null ? ` / meta ${r.meta.toFixed(1)}%` : ''}</span>
               </div>
             ))}
