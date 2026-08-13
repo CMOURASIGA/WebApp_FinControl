@@ -13,6 +13,7 @@ import { resolveVigente } from '../lib/motorCalculo';
 import { formatDate, hoje } from '../utils/formatters';
 import type { ParametroTributario, Socio, RegraDistribuicao, SplitSocio } from '../types/database';
 import { DEFAULT_BRAND } from '../lib/brand';
+import { extrairCoresLogo } from '../lib/extrairCoresLogo';
 
 export const ParametrosPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -26,8 +27,23 @@ export const ParametrosPage: React.FC = () => {
   const [brandForm, setBrandForm] = useState(brand);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [salvandoBrand, setSalvandoBrand] = useState(false);
+  const [analisandoLogo, setAnalisandoLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => { setBrandForm(brand); }, [brand]);
+  useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
+
+  const selecionarLogo = async (file: File | null) => {
+    setLogoFile(file);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    if (!file) { setLogoPreview(null); return; }
+    setLogoPreview(URL.createObjectURL(file)); setAnalisandoLogo(true); setErro(null);
+    try {
+      const paleta = await extrairCoresLogo(file);
+      setBrandForm((atual) => ({ ...atual, primary_color: paleta.principal, highlight_color: paleta.destaque }));
+    } catch (e) { setErro((e as Error).message); }
+    finally { setAnalisandoLogo(false); }
+  };
 
   const salvarWhiteLabel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,10 +224,11 @@ export const ParametrosPage: React.FC = () => {
           <Field label="Empresa cliente"><Input required value={brandForm.company_name} onChange={(e) => setBrandForm((atual) => ({ ...atual, company_name: e.target.value }))} /></Field>
           <Field label="Nome do produto"><Input required value={brandForm.product_name} onChange={(e) => setBrandForm((atual) => ({ ...atual, product_name: e.target.value }))} /></Field>
           <Field label="Subtítulo" className="sm:col-span-2"><Input required value={brandForm.product_subtitle} onChange={(e) => setBrandForm((atual) => ({ ...atual, product_subtitle: e.target.value }))} /></Field>
-          <Field label="Logo" hint="PNG, JPG ou WEBP, com até 5 MB. A nova imagem será salva no Supabase Storage." className="sm:col-span-2"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} /></Field>
+          <Field label="Logo" hint="PNG, JPG ou WEBP, com até 5 MB. As cores serão sugeridas automaticamente." className="sm:col-span-2"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void selecionarLogo(e.target.files?.[0] ?? null)} /></Field>
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2"><div className="flex h-24 w-44 items-center justify-center overflow-hidden rounded-xl bg-white p-2"><img src={logoPreview ?? brandForm.logo_url} alt="Prévia da logo" className="h-full w-full object-contain" /></div><div><p className="text-sm font-semibold text-slate-800">Prévia da identidade</p><p className="mt-1 text-xs text-slate-500">{analisandoLogo ? 'Analisando as cores da imagem...' : logoFile ? 'Cores sugeridas a partir da nova logo. Você pode ajustá-las abaixo.' : 'Selecione uma logo para gerar uma nova paleta.'}</p><div className="mt-3 flex gap-2"><span className="h-7 w-7 rounded-full border-2 border-white shadow" style={{backgroundColor:brandForm.primary_color}}/><span className="h-7 w-7 rounded-full border-2 border-white shadow" style={{backgroundColor:brandForm.highlight_color}}/></div></div></div>
           <Field label="Cor principal"><div className="flex gap-2"><Input type="color" className="h-11 w-16 p-1" value={brandForm.primary_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, primary_color: e.target.value }))} /><Input pattern="^#[0-9A-Fa-f]{6}$" required value={brandForm.primary_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, primary_color: e.target.value }))} /></div></Field>
           <Field label="Cor de destaque"><div className="flex gap-2"><Input type="color" className="h-11 w-16 p-1" value={brandForm.highlight_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, highlight_color: e.target.value }))} /><Input pattern="^#[0-9A-Fa-f]{6}$" required value={brandForm.highlight_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, highlight_color: e.target.value }))} /></div></Field>
-          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" onClick={() => { setBrandForm(DEFAULT_BRAND); setLogoFile(null); }}>Restaurar padrão Consult Services</Button><div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setWhiteLabelAberto(false)}>Voltar</Button><Button type="submit" disabled={salvandoBrand}>{salvandoBrand ? 'Salvando...' : 'Aplicar identidade'}</Button></div></div>
+          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" onClick={() => { setBrandForm(DEFAULT_BRAND); setLogoFile(null); setLogoPreview(null); }}>Restaurar padrão Consult Services</Button><div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setWhiteLabelAberto(false)}>Voltar</Button><Button type="submit" disabled={salvandoBrand||analisandoLogo}>{salvandoBrand ? 'Salvando...' : analisandoLogo ? 'Analisando...' : 'Aplicar identidade'}</Button></div></div>
         </form>
       </Modal>
     </div>
