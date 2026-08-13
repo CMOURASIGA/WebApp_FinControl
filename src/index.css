@@ -8,6 +8,8 @@
   --sidebar: #003b73;
   --accent: #003b73;
   --highlight: #00aeef;
+  --primary-brand: #003b73;
+  --highlight-brand: #00aeef;
 }
 
 * { box-sizing: border-box; }
@@ -22,20 +24,25 @@ body {
 }
 
 .sidebar-shell {
-  background: linear-gradient(180deg, #003b73 0%, #00325f 100%);
+  background: linear-gradient(180deg, var(--primary-brand) 0%, color-mix(in srgb, var(--primary-brand) 82%, #000) 100%);
   box-shadow: 12px 0 35px rgba(15, 43, 65, 0.08);
 }
 
 .sidebar-brand-panel {
   display: flex;
-  height: 112px;
+  height: 104px;
   align-items: center;
   justify-content: center;
   border-radius: 0 0 16px 16px;
   border-bottom: 1px solid #dce6ef;
   background: white;
   padding: 12px 20px;
+  overflow: hidden;
 }
+
+.sidebar-brand-logo { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(1.55); }
+.brand-highlight-bg { background-color: var(--highlight-brand); }
+.brand-highlight-text { color: var(--highlight-brand); }
 
 .workspace-card {
   border: 1px solid var(--border);

@@ -4,10 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
-import { COMPANY_LOGO_URL, COMPANY_NAME, PRODUCT_DESCRIPTION, PRODUCT_NAME, PRODUCT_SUBTITLE } from '../lib/brand';
+import { PRODUCT_DESCRIPTION } from '../lib/brand';
+import { useBrand } from '../contexts/BrandContext';
 
 export const LoginPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
+  const { brand } = useBrand();
   const navigate = useNavigate();
   const [modo, setModo] = useState<'login' | 'cadastro'>('login');
   const [nome, setNome] = useState('');
@@ -43,8 +45,8 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_right,rgba(0,174,239,0.22),transparent_32%),linear-gradient(135deg,#003b73,#001f3d)] px-4 py-10">
       <Card className="w-full max-w-md p-8">
-        <img src={COMPANY_LOGO_URL} alt={COMPANY_NAME} className="mx-auto h-24 w-full object-contain" />
-        <div className="mt-5 text-center"><p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-600">{PRODUCT_NAME}</p><h1 className="mt-1 text-2xl font-bold text-slate-900">{PRODUCT_SUBTITLE}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{PRODUCT_DESCRIPTION}</p></div>
+        <img src={brand.logo_url} alt={brand.company_name} className="mx-auto h-28 w-full object-contain" />
+        <div className="mt-5 text-center"><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.24em]">{brand.product_name}</p><h1 className="mt-1 text-2xl font-bold text-slate-900">{brand.product_subtitle}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{PRODUCT_DESCRIPTION}</p></div>
         <p className="mt-2 text-sm text-slate-500">
           {modo === 'login' ? 'Entre com sua conta de sócio.' : 'Crie sua conta de sócio.'}
         </p>

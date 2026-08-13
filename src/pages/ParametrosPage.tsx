@@ -2,21 +2,48 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
 import { useAuth } from '../contexts/AuthContext';
+import { useBrand } from '../contexts/BrandContext';
+import { brandService } from '../services/brandService';
 import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
 import { resolveVigente } from '../lib/motorCalculo';
 import { formatDate, hoje } from '../utils/formatters';
 import type { ParametroTributario, Socio, RegraDistribuicao, SplitSocio } from '../types/database';
+import { DEFAULT_BRAND } from '../lib/brand';
 
 export const ParametrosPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { brand, refreshBrand } = useBrand();
   const [tributarios, setTributarios] = useState<ParametroTributario[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [whiteLabelAberto, setWhiteLabelAberto] = useState(false);
+  const [brandForm, setBrandForm] = useState(brand);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [salvandoBrand, setSalvandoBrand] = useState(false);
+
+  useEffect(() => { setBrandForm(brand); }, [brand]);
+
+  const salvarWhiteLabel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || profile?.papel !== 'admin') return;
+    setErro(null); setMsg(null); setSalvandoBrand(true);
+    try {
+      const logoUrl = logoFile ? await brandService.enviarLogo(logoFile) : brandForm.logo_url;
+      await brandService.salvar({ ...brandForm, logo_url: logoUrl });
+      await refreshBrand();
+      setLogoFile(null); setWhiteLabelAberto(false); setMsg('Identidade visual atualizada.');
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvandoBrand(false);
+    }
+  };
 
   const recarregar = async () => {
     const [t, r, s] = await Promise.all([
@@ -118,6 +145,12 @@ export const ParametrosPage: React.FC = () => {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-5"><div className="flex h-24 w-48 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-3"><img src={brand.logo_url} alt={brand.company_name} className="h-full w-full object-contain" /></div><div><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.2em]">White label</p><h2 className="mt-1 font-semibold text-slate-900">{brand.product_name}</h2><p className="mt-1 text-sm text-slate-500">{brand.company_name} · {brand.product_subtitle}</p><div className="mt-3 flex gap-2"><span className="h-5 w-5 rounded-full border border-white shadow" style={{ backgroundColor: brand.primary_color }} /><span className="h-5 w-5 rounded-full border border-white shadow" style={{ backgroundColor: brand.highlight_color }} /></div></div></div>
+            <Button type="button" onClick={() => setWhiteLabelAberto(true)} disabled={profile?.papel !== 'admin'}>{profile?.papel === 'admin' ? 'Personalizar identidade' : 'Somente administrador'}</Button>
+          </div>
+        </Card>
         {/* Tributação */}
         <Card className="p-6">
           <h2 className="font-semibold text-slate-900">Tributação vigente</h2>
@@ -169,6 +202,18 @@ export const ParametrosPage: React.FC = () => {
           </form>
         </Card>
       </div>
+
+      <Modal aberto={whiteLabelAberto} titulo="Personalizar identidade" descricao="Essas informações serão aplicadas no login, menu e cabeçalho do sistema." onClose={() => setWhiteLabelAberto(false)} largura="lg">
+        <form onSubmit={salvarWhiteLabel} className="grid gap-4 sm:grid-cols-2">
+          <Field label="Empresa cliente"><Input required value={brandForm.company_name} onChange={(e) => setBrandForm((atual) => ({ ...atual, company_name: e.target.value }))} /></Field>
+          <Field label="Nome do produto"><Input required value={brandForm.product_name} onChange={(e) => setBrandForm((atual) => ({ ...atual, product_name: e.target.value }))} /></Field>
+          <Field label="Subtítulo" className="sm:col-span-2"><Input required value={brandForm.product_subtitle} onChange={(e) => setBrandForm((atual) => ({ ...atual, product_subtitle: e.target.value }))} /></Field>
+          <Field label="Logo" hint="PNG, JPG ou WEBP, com até 5 MB. A nova imagem será salva no Supabase Storage." className="sm:col-span-2"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} /></Field>
+          <Field label="Cor principal"><div className="flex gap-2"><Input type="color" className="h-11 w-16 p-1" value={brandForm.primary_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, primary_color: e.target.value }))} /><Input pattern="^#[0-9A-Fa-f]{6}$" required value={brandForm.primary_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, primary_color: e.target.value }))} /></div></Field>
+          <Field label="Cor de destaque"><div className="flex gap-2"><Input type="color" className="h-11 w-16 p-1" value={brandForm.highlight_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, highlight_color: e.target.value }))} /><Input pattern="^#[0-9A-Fa-f]{6}$" required value={brandForm.highlight_color} onChange={(e) => setBrandForm((atual) => ({ ...atual, highlight_color: e.target.value }))} /></div></Field>
+          <div className="flex flex-col-reverse gap-2 sm:col-span-2 sm:flex-row sm:justify-between"><Button type="button" variant="ghost" onClick={() => { setBrandForm(DEFAULT_BRAND); setLogoFile(null); }}>Restaurar padrão Consult Services</Button><div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setWhiteLabelAberto(false)}>Voltar</Button><Button type="submit" disabled={salvandoBrand}>{salvandoBrand ? 'Salvando...' : 'Aplicar identidade'}</Button></div></div>
+        </form>
+      </Modal>
     </div>
   );
 };
