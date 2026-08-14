@@ -14,6 +14,7 @@ const SociosPage = lazy(() => import('./pages/SociosPage').then((m) => ({ defaul
 const InvestimentosPage = lazy(() => import('./pages/InvestimentosPage').then((m) => ({ default: m.InvestimentosPage })));
 const SimuladorPage = lazy(() => import('./pages/SimuladorPage').then((m) => ({ default: m.SimuladorPage })));
 const FechamentoPage = lazy(() => import('./pages/FechamentoPage').then((m) => ({ default: m.FechamentoPage })));
+const OrionPage = lazy(() => import('./pages/OrionPage').then((m) => ({ default: m.OrionPage })));
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
             <Route path="/investimentos" element={<InvestimentosPage />} />
             <Route path="/simulador" element={<SimuladorPage />} />
             <Route path="/fechamento" element={<FechamentoPage />} />
+            <Route path="/orion" element={<OrionPage />} />
             <Route path="/parametros" element={<ParametrosPage />} />
           </Route>
         </Routes>
