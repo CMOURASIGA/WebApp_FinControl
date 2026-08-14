@@ -107,3 +107,8 @@ O `motorCalculo.ts` é o núcleo do sistema: resolve qual parâmetro vale em uma
 Implementado: Dashboard executivo, Parâmetros Configuráveis, Cadastro de Sócios, Projetos + Receitas + Custos diretos, Despesas/Contas a Pagar, Conta Corrente dos Sócios, Investimentos + ROI, Simulador Tributário, Fechamento Mensal + DRE gerencial, MRR/ARR.
 
 Deixado para uma fase seguinte: integrações bancárias automáticas, projeção de caixa de 12 meses, simulador de novo negócio com scoring automático, alertas proativos, reabertura de fechamento. Deliberadamente fora de escopo: qualquer financeiro pessoal de sócio (meta de renda, reserva pessoal) — este é um sistema de controle da empresa.
+
+
+## Orion, inteligência financeira
+
+O sistema inclui a Orion Room para análise do caixa, projeções, reserva empresarial, impostos e simulações por texto ou voz. O motor calculado funciona sem serviço externo. Para habilitar respostas generativas no ambiente real, configure `OPENAI_API_KEY` e `OPENAI_MODEL` na Vercel. Apenas dados financeiros agregados são enviados ao endpoint.
