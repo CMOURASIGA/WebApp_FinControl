@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, ReceiptText, Users, TrendingUp, SlidersHorizontal, CalendarCheck, LogOut, Menu, X, CircleDollarSign, RotateCcw, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ReceiptText, Users, TrendingUp, SlidersHorizontal, CalendarCheck, LogOut, Menu, X, CircleDollarSign, RotateCcw, FlaskConical, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrand } from '../../contexts/BrandContext';
 import { Modal } from '../ui/Modal';
@@ -15,10 +15,11 @@ const NAV_ITEMS = [
   { section: 'Sociedade', to: '/investimentos', label: 'Investimentos', icon: TrendingUp },
   { section: 'Gestão', to: '/simulador', label: 'Simulador Tributário', icon: CircleDollarSign },
   { section: 'Gestão', to: '/fechamento', label: 'Fechamento e DRE', icon: CalendarCheck },
+  { section: 'Inteligência', to: '/orion', label: 'Orion Room', icon: Sparkles },
   { section: 'Gestão', to: '/parametros', label: 'Parâmetros', icon: SlidersHorizontal },
 ];
 
-const TITULOS: Record<string, string> = { '/': 'Visão Geral', '/projetos': 'Projetos e Receitas', '/despesas': 'Custos e Despesas', '/socios': 'Gestão de Sócios', '/investimentos': 'Investimentos', '/simulador': 'Simulador Tributário', '/fechamento': 'Fechamento e DRE', '/parametros': 'Parâmetros' };
+const TITULOS: Record<string, string> = { '/': 'Visão Geral', '/projetos': 'Projetos e Receitas', '/despesas': 'Custos e Despesas', '/socios': 'Gestão de Sócios', '/investimentos': 'Investimentos', '/simulador': 'Simulador Tributário', '/fechamento': 'Fechamento e DRE', '/orion': 'Orion Room', '/parametros': 'Parâmetros' };
 
 export const AppLayout: React.FC = () => {
   const { profile, signOut } = useAuth();
