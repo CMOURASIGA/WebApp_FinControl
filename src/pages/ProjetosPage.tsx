@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { clientesService, projetosService } from '../services/projetosService';
 import { sociosService } from '../services/sociosService';
 import type { Cliente, Projeto, Socio } from '../types/database';
@@ -18,6 +20,7 @@ const TIPO_LABEL: Record<Projeto['tipo'], string> = {
 
 export const ProjetosPage: React.FC = () => {
   const { user } = useAuth();
+  const { can } = useCapabilities();
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
@@ -73,6 +76,8 @@ export const ProjetosPage: React.FC = () => {
     }
   };
 
+  if (!can('view_projects')) return <PermissionState />;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -80,10 +85,10 @@ export const ProjetosPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Projetos & Receitas</h1>
           <p className="text-sm text-slate-500">Cada projeto carrega sua própria regra de distribuição.</p>
         </div>
-        <Button onClick={() => setMostrarForm((v) => !v)}>{mostrarForm ? 'Cancelar' : 'Novo projeto'}</Button>
+        {can('manage_projects') && <Button onClick={() => setMostrarForm((v) => !v)}>{mostrarForm ? 'Cancelar' : 'Novo projeto'}</Button>}
       </div>
 
-      {mostrarForm && (
+      {mostrarForm && can('manage_projects') && (
         <Card className="p-6">
           <form onSubmit={criar} className="grid gap-4 sm:grid-cols-2">
             <Field label="Nome do projeto">

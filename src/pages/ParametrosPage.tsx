@@ -4,8 +4,10 @@ import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
 import { useBrand } from '../contexts/BrandContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { brandService } from '../services/brandService';
 import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
@@ -16,7 +18,8 @@ import { DEFAULT_BRAND } from '../lib/brand';
 import { extrairCoresLogo } from '../lib/extrairCoresLogo';
 
 export const ParametrosPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { can } = useCapabilities();
   const { brand, refreshBrand } = useBrand();
   const [tributarios, setTributarios] = useState<ParametroTributario[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
@@ -47,7 +50,7 @@ export const ParametrosPage: React.FC = () => {
 
   const salvarWhiteLabel = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || profile?.papel !== 'admin') return;
+    if (!user || !can('manage_brand')) return;
     setErro(null); setMsg(null); setSalvandoBrand(true);
     try {
       const logoUrl = logoFile ? await brandService.enviarLogo(logoFile) : brandForm.logo_url;
@@ -140,6 +143,8 @@ export const ParametrosPage: React.FC = () => {
 
   const nomeDoSocio = (id: string) => socios.find((s) => s.id === id)?.nome ?? id;
 
+  if (!can('view_parameters')) return <PermissionState />;
+
   return (
     <div className="space-y-8">
       <div>
@@ -164,7 +169,8 @@ export const ParametrosPage: React.FC = () => {
         <Card className="p-6 lg:col-span-2">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5"><div className="brand-logo-frame h-24 w-48 p-3"><img src={brand.logo_url} alt={brand.company_name} className="brand-logo-preview" /></div><div><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.2em]">White label</p><h2 className="mt-1 font-semibold text-slate-900">{brand.product_name}</h2><p className="mt-1 text-sm text-slate-500">{brand.company_name} · {brand.product_subtitle}</p><div className="mt-3 flex gap-2"><span className="h-5 w-5 rounded-full border border-white shadow" style={{ backgroundColor: brand.primary_color }} /><span className="h-5 w-5 rounded-full border border-white shadow" style={{ backgroundColor: brand.highlight_color }} /></div></div></div>
-            <Button type="button" onClick={() => setWhiteLabelAberto(true)} disabled={profile?.papel !== 'admin'}>{profile?.papel === 'admin' ? 'Personalizar identidade' : 'Somente administrador'}</Button>
+            {can('manage_brand') && <Button type="button" onClick={() => setWhiteLabelAberto(true)}>Personalizar identidade</Button>}
+            {!can('manage_brand') && <Button type="button" disabled>Somente administrador</Button>}
           </div>
         </Card>
         {/* Tributação */}
@@ -173,15 +179,19 @@ export const ParametrosPage: React.FC = () => {
           <p className="mt-1 text-sm text-slate-500">
             Hoje: {tributoVigente ? `${tributoVigente.aliquota_percentual}% (desde ${formatDate(tributoVigente.vigencia_inicio)})` : 'nenhuma regra cadastrada'}
           </p>
-          <form onSubmit={salvarAliquota} className="mt-4 space-y-3">
-            <Field label="Nova alíquota (%)">
-              <Input type="number" step="0.001" min="0" max="100" required value={novaAliquota} onChange={(e) => setNovaAliquota(e.target.value)} />
-            </Field>
-            <Field label="Vigente a partir de">
-              <Input type="date" required value={novaVigenciaTributo} onChange={(e) => setNovaVigenciaTributo(e.target.value)} />
-            </Field>
-            <Button type="submit" size="sm">Registrar nova alíquota</Button>
-          </form>
+          {can('manage_financial_parameters') ? (
+            <form onSubmit={salvarAliquota} className="mt-4 space-y-3">
+              <Field label="Nova alíquota (%)">
+                <Input type="number" step="0.001" min="0" max="100" required value={novaAliquota} onChange={(e) => setNovaAliquota(e.target.value)} />
+              </Field>
+              <Field label="Vigente a partir de">
+                <Input type="date" required value={novaVigenciaTributo} onChange={(e) => setNovaVigenciaTributo(e.target.value)} />
+              </Field>
+              <Button type="submit" size="sm">Registrar nova alíquota</Button>
+            </form>
+          ) : (
+            <p className="mt-4 text-xs text-slate-400">Seu perfil não pode alterar a tributação vigente.</p>
+          )}
           <ul className="mt-4 space-y-1 text-xs text-slate-500">
             {tributarios.slice(0, 5).map((t) => (
               <li key={t.id}>
@@ -201,21 +211,25 @@ export const ParametrosPage: React.FC = () => {
                   .join(' + ')}`
               : 'nenhuma regra cadastrada'}
           </p>
-          <form onSubmit={salvarRegraDefault} className="mt-4 space-y-3">
-            <SplitSociosEditor
-              socios={socios}
-              percentualEmpresa={percentualEmpresa}
-              onChangePercentualEmpresa={setPercentualEmpresa}
-              splits={splits}
-              onChangeSplits={setSplits}
-            />
-            <Field label="Vigente a partir de">
-              <Input type="date" required value={novaVigenciaRegra} onChange={(e) => setNovaVigenciaRegra(e.target.value)} />
-            </Field>
-            <Button type="submit" size="sm" disabled={!splitValido(percentualEmpresa, splits) || socios.length === 0}>
-              Registrar nova regra
-            </Button>
-          </form>
+          {can('manage_financial_parameters') ? (
+            <form onSubmit={salvarRegraDefault} className="mt-4 space-y-3">
+              <SplitSociosEditor
+                socios={socios}
+                percentualEmpresa={percentualEmpresa}
+                onChangePercentualEmpresa={setPercentualEmpresa}
+                splits={splits}
+                onChangeSplits={setSplits}
+              />
+              <Field label="Vigente a partir de">
+                <Input type="date" required value={novaVigenciaRegra} onChange={(e) => setNovaVigenciaRegra(e.target.value)} />
+              </Field>
+              <Button type="submit" size="sm" disabled={!splitValido(percentualEmpresa, splits) || socios.length === 0}>
+                Registrar nova regra
+              </Button>
+            </form>
+          ) : (
+            <p className="mt-4 text-xs text-slate-400">Seu perfil não pode alterar a regra de distribuição.</p>
+          )}
         </Card>
       </div>
 

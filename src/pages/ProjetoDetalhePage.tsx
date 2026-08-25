@@ -5,7 +5,9 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { projetosService } from '../services/projetosService';
 import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
@@ -26,6 +28,7 @@ const STATUS_TONE: Record<Receita['status'], 'success' | 'warning' | 'danger' | 
 export const ProjetoDetalhePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { can } = useCapabilities();
 
   const [projeto, setProjeto] = useState<Projeto | null>(null);
   const [receitas, setReceitas] = useState<Receita[]>([]);
@@ -208,6 +211,7 @@ export const ProjetoDetalhePage: React.FC = () => {
 
   const nomeDoSocio = (idSocio: string) => socios.find((s) => s.id === idSocio)?.nome ?? idSocio;
 
+  if (!can('view_projects')) return <PermissionState />;
   if (!projeto) return <p className="text-sm text-slate-500">Carregando projeto...</p>;
 
   return (
@@ -253,10 +257,12 @@ export const ProjetoDetalhePage: React.FC = () => {
               ? `${regraVigente.percentual_empresa}% empresa / ${regraVigente.split_socios.map((s) => `${nomeDoSocio(s.socio_id)} ${s.percentual}%`).join(' + ')} ${regraVigente.escopo === 'projeto' ? '(específica deste projeto)' : '(default da empresa)'}`
               : 'nenhuma regra vigente'}
           </p>
+          {can('manage_financial_parameters') && (
           <button className="mt-2 text-xs font-medium text-blue-600 hover:underline" onClick={() => setMostrarFormRegra((v) => !v)}>
             {mostrarFormRegra ? 'Cancelar' : 'Definir regra específica para este projeto'}
           </button>
-          {mostrarFormRegra && (
+          )}
+          {mostrarFormRegra && can('manage_financial_parameters') && (
             <form onSubmit={salvarRegraProjeto} className="mt-3 max-w-md space-y-3">
               <SplitSociosEditor
                 socios={socios}
@@ -279,6 +285,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       {/* Receitas */}
       <Card className="p-6">
         <h2 className="font-semibold text-slate-900">Receitas</h2>
+        {can('manage_revenues') && (
         <form onSubmit={criarReceita} className="mt-4 grid gap-3 sm:grid-cols-5 sm:items-end">
           <Field label="Descrição" className="sm:col-span-2">
             <Input required value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Implantação CRM Empresa A" />
@@ -304,6 +311,7 @@ export const ProjetoDetalhePage: React.FC = () => {
           {emiteNota && temRetencao && <Field label="Retenção (%)"><Input type="number" min="0" max="100" step="0.001" required value={percentualRetencao} onChange={(e) => setPercentualRetencao(e.target.value)} /></Field>}
           <Button type="submit" size="sm" className="sm:col-span-5">Lançar receita</Button>
         </form>
+        )}
 
         <Modal aberto={Boolean(editando)} titulo="Editar receita" descricao="A alteração ficará registrada no histórico financeiro." onClose={() => setEditando(null)} largura="lg">
           <form onSubmit={salvarEdicao} className="grid gap-4 sm:grid-cols-2">
@@ -331,7 +339,7 @@ export const ProjetoDetalhePage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <span className="font-medium">{formatCurrency(r.valor_bruto)}</span>
                 <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
-                {r.status !== 'recebido' && r.status !== 'cancelado' && (
+                {r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && (
                   <button
                     className="text-xs font-medium text-blue-600 hover:underline"
                     onClick={async () => {
@@ -342,11 +350,11 @@ export const ProjetoDetalhePage: React.FC = () => {
                     marcar recebida
                   </button>
                 )}
-                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
-                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => abrirAcao(r, 'cancelar')}>cancelar</button>}
-                {r.tipo !== 'ajuste' && r.status === 'recebido' && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => abrirAcao(r, 'estornar')}>estornar recebimento</button>}
-                {r.tipo !== 'ajuste' && r.status === 'cancelado' && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => abrirAcao(r, 'reativar')}>reativar</button>}
-                {r.tipo !== 'ajuste' && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => abrirAcao(r, 'corrigir')}>corrigir valor fechado</button>}
+                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
+                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => abrirAcao(r, 'cancelar')}>cancelar</button>}
+                {r.tipo !== 'ajuste' && r.status === 'recebido' && can('manage_revenues') && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => abrirAcao(r, 'estornar')}>estornar recebimento</button>}
+                {r.tipo !== 'ajuste' && r.status === 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => abrirAcao(r, 'reativar')}>reativar</button>}
+                {r.tipo !== 'ajuste' && can('manage_revenues') && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => abrirAcao(r, 'corrigir')}>corrigir valor fechado</button>}
                 <button className="text-xs font-medium text-slate-500 hover:underline" onClick={() => abrirHistorico(r)}>histórico</button>
               </div>
             </div>
@@ -366,6 +374,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       {/* Custos diretos */}
       <Card className="p-6">
         <h2 className="font-semibold text-slate-900">Custos diretos do projeto</h2>
+        {can('manage_expenses') && (
         <form onSubmit={criarCusto} className="mt-4 grid gap-3 sm:grid-cols-5 sm:items-end">
           <Field label="Descrição" className="sm:col-span-2">
             <Input required value={custoDescricao} onChange={(e) => setCustoDescricao(e.target.value)} placeholder="Vercel / OpenAI / freelancer..." />
@@ -381,6 +390,7 @@ export const ProjetoDetalhePage: React.FC = () => {
           </Field>
           <Button type="submit" size="sm" className="sm:col-span-5">Lançar custo</Button>
         </form>
+        )}
         <div className="mt-4 divide-y divide-slate-100">
           {custos.map((c) => (
             <div key={c.id} className="flex items-center justify-between py-2 text-sm">
@@ -388,7 +398,7 @@ export const ProjetoDetalhePage: React.FC = () => {
                 <p className="font-medium text-slate-800">{c.descricao}</p>
                 <p className="text-xs text-slate-500">{c.categoria} · {formatDate(c.data)}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2"><span className={c.status==='cancelado'?'font-medium text-slate-400 line-through':'font-medium text-red-600'}>-{formatCurrency(c.valor)}</span><Badge tone={c.status==='pago'?'success':c.status==='cancelado'?'danger':'warning'}>{c.status}</Badge>{c.status==='provisionado'&&<><button className="text-xs text-blue-600" onClick={()=>abrirCustoEdicao(c)}>editar</button><button className="text-xs text-green-700" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'pagar'});}}>marcar pago</button><button className="text-xs text-red-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'cancelar'});}}>cancelar</button></>}{c.status==='pago'&&<button className="text-xs text-amber-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'estornar'});}}>estornar pagamento</button>}{c.status==='cancelado'&&<button className="text-xs text-blue-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'reativar'});}}>reativar</button>}<button className="text-xs text-slate-500" onClick={async()=>{try{setCustoHistorico(await custosProjetoService.listarHistorico(c.id));}catch(e){setErro((e as Error).message);}}}>histórico</button></div>
+              <div className="flex flex-wrap items-center gap-2"><span className={c.status==='cancelado'?'font-medium text-slate-400 line-through':'font-medium text-red-600'}>-{formatCurrency(c.valor)}</span><Badge tone={c.status==='pago'?'success':c.status==='cancelado'?'danger':'warning'}>{c.status}</Badge>{c.status==='provisionado'&&can('manage_expenses')&&<><button className="text-xs text-blue-600" onClick={()=>abrirCustoEdicao(c)}>editar</button>{can('mark_expense_paid')&&<button className="text-xs text-green-700" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'pagar'});}}>marcar pago</button>}<button className="text-xs text-red-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'cancelar'});}}>cancelar</button></>}{c.status==='pago'&&can('reverse_expense_payment')&&<button className="text-xs text-amber-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'estornar'});}}>estornar pagamento</button>}{c.status==='cancelado'&&can('manage_expenses')&&<button className="text-xs text-blue-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'reativar'});}}>reativar</button>}<button className="text-xs text-slate-500" onClick={async()=>{try{setCustoHistorico(await custosProjetoService.listarHistorico(c.id));}catch(e){setErro((e as Error).message);}}}>histórico</button></div>
             </div>
           ))}
           {custos.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhum custo lançado.</p>}

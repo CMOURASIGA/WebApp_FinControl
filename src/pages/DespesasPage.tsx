@@ -3,7 +3,9 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { despesasService } from '../services/despesasService';
 import { projetosService } from '../services/projetosService';
 import { formatCurrency, formatDate, hoje, mesAtual, primeiroDiaDoMes } from '../utils/formatters';
@@ -19,6 +21,7 @@ const TIPO_LABEL: Record<Despesa['tipo'], string> = {
 
 export const DespesasPage: React.FC = () => {
   const { user } = useAuth();
+  const { can } = useCapabilities();
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -75,6 +78,8 @@ export const DespesasPage: React.FC = () => {
 
   const totalProvisionado = despesas.filter((d) => d.status === 'provisionado').reduce((acc, d) => acc + d.valor, 0);
 
+  if (!can('view_expenses')) return <PermissionState />;
+
   return (
     <div className="space-y-6">
       <div>
@@ -90,6 +95,7 @@ export const DespesasPage: React.FC = () => {
         <p className="text-xl font-bold text-red-600">{formatCurrency(totalProvisionado)}</p>
       </Card>
 
+      {can('manage_expenses') && (
       <Card className="p-6">
         <form onSubmit={criar} className="grid gap-3 sm:grid-cols-3">
           <Field label="Descrição" className="sm:col-span-2">
@@ -132,6 +138,7 @@ export const DespesasPage: React.FC = () => {
           <Button type="submit" className="sm:col-span-3">Lançar despesa</Button>
         </form>
       </Card>
+      )}
 
       <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
         {despesas.map((d) => (
@@ -146,7 +153,7 @@ export const DespesasPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="font-medium">{formatCurrency(d.valor)}</span>
               <Badge tone={d.status === 'pago' ? 'success' : d.status === 'cancelado' ? 'danger' : 'warning'}>{d.status}</Badge>
-              {d.status === 'provisionado' && (
+              {d.status === 'provisionado' && can('mark_expense_paid') && (
                 <button
                   className="text-xs font-medium text-blue-600 hover:underline"
                   onClick={async () => {
@@ -156,10 +163,10 @@ export const DespesasPage: React.FC = () => {
                   marcar paga
                 </button>
               )}
-              {d.status === 'provisionado' && <button className="text-xs font-medium text-blue-600" onClick={()=>abrirEdicao(d)}>editar</button>}
-              {d.status === 'provisionado' && <button className="text-xs font-medium text-red-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'cancelar'});}}>cancelar</button>}
-              {d.status === 'pago' && <button className="text-xs font-medium text-amber-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'estornar'});}}>estornar pagamento</button>}
-              {d.status === 'cancelado' && <button className="text-xs font-medium text-blue-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'reativar'});}}>reativar</button>}
+              {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={()=>abrirEdicao(d)}>editar</button>}
+              {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-red-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'cancelar'});}}>cancelar</button>}
+              {d.status === 'pago' && can('reverse_expense_payment') && <button className="text-xs font-medium text-amber-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'estornar'});}}>estornar pagamento</button>}
+              {d.status === 'cancelado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={()=>{setMotivo('');setAcao({despesa:d,tipo:'reativar'});}}>reativar</button>}
               <button className="text-xs font-medium text-slate-500" onClick={()=>verHistorico(d)}>histórico</button>
             </div>
           </div>

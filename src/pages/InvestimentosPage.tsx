@@ -3,7 +3,9 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge, Field, Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { investimentosService } from '../services/investimentosService';
 import { projetosService } from '../services/projetosService';
 import { sociosService } from '../services/sociosService';
@@ -21,6 +23,7 @@ type EditorInvestimento = {
 
 export const InvestimentosPage: React.FC = () => {
   const { user } = useAuth();
+  const { can } = useCapabilities();
   const [investimentos, setInvestimentos] = useState<Investimento[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
@@ -124,6 +127,8 @@ export const InvestimentosPage: React.FC = () => {
   const abrirHistorico = async (i: Investimento) => { setHistoricoDe(i);setHistorico([]);try{setHistorico(await investimentosService.listarHistorico(i.id));}catch(e){setErro((e as Error).message);} };
   const mudarEditor = <K extends keyof EditorInvestimento>(campo: K, valor: EditorInvestimento[K]) => setEditor((atual)=>atual?{...atual,[campo]:valor}:atual);
 
+  if (!can('view_investments')) return <PermissionState />;
+
   return (
     <div className="space-y-6">
       <div>
@@ -131,6 +136,7 @@ export const InvestimentosPage: React.FC = () => {
         <p className="text-sm text-slate-500">Despesa ≠ investimento: aqui você registra capital aportado e acompanha o retorno.</p>
       </div>
 
+      {can('manage_investments') && (
       <Card className="p-6">
         <form onSubmit={criar} className="grid gap-3 sm:grid-cols-3">
           <Field label="Investidor">
@@ -181,6 +187,7 @@ export const InvestimentosPage: React.FC = () => {
           <Button type="submit" className="sm:col-span-3">Registrar investimento</Button>
         </form>
       </Card>
+      )}
 
       {Object.keys(roiPorProjeto).length > 0 && (
         <Card className="p-6">
@@ -207,7 +214,7 @@ export const InvestimentosPage: React.FC = () => {
                 {formatDate(i.data)}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2"><span className="mr-2 font-medium">{formatCurrency(i.valor)}</span>{i.status!=='cancelado'&&<Button size="sm" variant="secondary" onClick={()=>abrirEdicao(i)}>Editar</Button>}<Button size="sm" variant="ghost" onClick={()=>abrirHistorico(i)}>Histórico</Button><Button size="sm" variant={i.status==='cancelado'?'secondary':'danger'} onClick={()=>{setAcao({investimento:i,tipo:i.status==='cancelado'?'reativar':'cancelar'});setMotivoAcao('');}}>{i.status==='cancelado'?'Reativar':'Cancelar'}</Button></div>
+            <div className="flex flex-wrap items-center gap-2"><span className="mr-2 font-medium">{formatCurrency(i.valor)}</span>{i.status!=='cancelado'&&can('manage_investments')&&<Button size="sm" variant="secondary" onClick={()=>abrirEdicao(i)}>Editar</Button>}<Button size="sm" variant="ghost" onClick={()=>abrirHistorico(i)}>Histórico</Button>{can('manage_investments')&&<Button size="sm" variant={i.status==='cancelado'?'secondary':'danger'} onClick={()=>{setAcao({investimento:i,tipo:i.status==='cancelado'?'reativar':'cancelar'});setMotivoAcao('');}}>{i.status==='cancelado'?'Reativar':'Cancelar'}</Button>}</div>
           </div>
         ))}
         {investimentos.length === 0 && <p className="px-4 py-3 text-sm text-slate-500">Nenhum investimento registrado.</p>}

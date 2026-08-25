@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Field, Input } from '../components/ui/Input';
+import { PermissionState } from '../components/ui/PermissionState';
 import { SplitSociosEditor } from '../components/SplitSociosEditor';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { sociosService } from '../services/sociosService';
 import { parametrosService } from '../services/parametrosService';
 import { resolveVigente, simularCenario } from '../lib/motorCalculo';
@@ -11,6 +13,7 @@ import type { Socio, SplitSocio } from '../types/database';
 const ALIQUOTAS_SUGERIDAS = [6, 8, 10, 12, 15];
 
 export const SimuladorPage: React.FC = () => {
+  const { can } = useCapabilities();
   const [socios, setSocios] = useState<Socio[]>([]);
   const [receitaBruta, setReceitaBruta] = useState('19000');
   const [aliquota, setAliquota] = useState(6);
@@ -57,6 +60,8 @@ export const SimuladorPage: React.FC = () => {
   );
 
   const nomeDoSocio = (id: string) => socios.find((s) => s.id === id)?.nome ?? id;
+
+  if (!can('view_simulator')) return <PermissionState />;
 
   return (
     <div className="space-y-6">

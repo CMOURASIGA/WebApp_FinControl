@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Input';
+import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
 import { fechamentoService } from '../services/fechamentoService';
 import { sociosService } from '../services/sociosService';
@@ -11,6 +13,7 @@ import type { FechamentoMensal, Socio } from '../types/database';
 
 export const FechamentoPage: React.FC = () => {
   const { user } = useAuth();
+  const { can } = useCapabilities();
   const [mes, setMes] = useState(mesAtual());
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [fechamentoAtual, setFechamentoAtual] = useState<FechamentoMensal | null>(null);
@@ -63,6 +66,8 @@ export const FechamentoPage: React.FC = () => {
 
   const nomeDoSocio = (id: string) => socios.find((s) => s.id === id)?.nome ?? id;
 
+  if (!can('view_closing')) return <PermissionState />;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -74,10 +79,12 @@ export const FechamentoPage: React.FC = () => {
           <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm" />
           {fechamentoAtual?.status === 'fechado' ? (
             <Badge tone="success">Fechado em {new Date(fechamentoAtual.fechado_em ?? '').toLocaleDateString('pt-BR')}</Badge>
-          ) : (
+          ) : can('close_period') ? (
             <Button onClick={fechar} disabled={carregando}>
               Fechar mês
             </Button>
+          ) : (
+            <Badge tone="neutral">Aberto — só admin/financeiro pode fechar</Badge>
           )}
         </div>
       </div>

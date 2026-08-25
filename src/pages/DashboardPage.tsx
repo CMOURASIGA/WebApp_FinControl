@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
+import { PermissionState } from '../components/ui/PermissionState';
+import { useCapabilities } from '../hooks/useCapabilities';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
 import { assinaturasService } from '../services/assinaturasService';
 import { sociosService } from '../services/sociosService';
@@ -13,6 +15,7 @@ import { formatCurrency, mesAtual, primeiroDiaDoMes, ultimoDiaDoMes, nomeDoMes, 
 import type { Assinatura, Socio, SocioLancamento } from '../types/database';
 
 export const DashboardPage: React.FC = () => {
+  const { can } = useCapabilities();
   const [mes, setMes] = useState(mesAtual());
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [dreRealizada, setDreRealizada] = useState<DREPeriodo | null>(null);
@@ -79,6 +82,7 @@ export const DashboardPage: React.FC = () => {
   const margemSeguranca = Number.isFinite(breakEven.faturamentoMinimo) && dreRealizada
     ? dreRealizada.consolidadoProjetos.receitaBruta - breakEven.faturamentoMinimo : 0;
 
+  if (!can('view_dashboard')) return <PermissionState />;
   if (carregando) return <p className="text-sm text-slate-500">Carregando painel...</p>;
   if (erro) return <p className="text-sm text-red-600">Erro ao carregar dashboard: {erro}</p>;
   if (!dre || !dreRealizada) return null;
