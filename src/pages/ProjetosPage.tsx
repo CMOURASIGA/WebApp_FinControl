@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Drawer } from '../components/ui/Drawer';
 import { PageHeader } from '../components/ui/PageHeader';
-import { EmptyState } from '../components/ui/EmptyState';
+import { DataTable, type DataTableColumn } from '../components/ui/DataTable';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { PermissionState } from '../components/ui/PermissionState';
@@ -84,6 +83,20 @@ export const ProjetosPage: React.FC = () => {
 
   if (!can('view_projects')) return <PermissionState />;
 
+  const colunas: DataTableColumn<Projeto>[] = [
+    {
+      header: 'Projeto',
+      render: (p) => (
+        <Link to={`/projetos/${p.id}`} className="font-semibold text-slate-900 hover:underline">
+          {p.nome}
+        </Link>
+      ),
+    },
+    { header: 'Tipo', render: (p) => TIPO_LABEL[p.tipo] },
+    { header: 'Origem', render: (p) => p.origem_economica },
+    { header: 'Status', render: (p) => <Badge tone={p.status === 'ativo' ? 'success' : p.status === 'cancelado' ? 'danger' : 'neutral'}>{p.status}</Badge> },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -136,23 +149,13 @@ export const ProjetosPage: React.FC = () => {
         </form>
       </Drawer>
 
-      {projetos.length === 0 ? (
-        <EmptyState title="Nenhum projeto cadastrado ainda" description={can('manage_projects') ? 'Use "Novo projeto" para começar.' : undefined} />
-      ) : (
-        <div className="grid gap-3">
-          {projetos.map((p) => (
-            <Link key={p.id} to={`/projetos/${p.id}`}>
-              <Card className="flex items-center justify-between p-4 transition-shadow hover:shadow-md">
-                <div>
-                  <p className="font-semibold text-slate-900">{p.nome}</p>
-                  <p className="text-sm text-slate-500">{TIPO_LABEL[p.tipo]} · {p.origem_economica}</p>
-                </div>
-                <Badge tone={p.status === 'ativo' ? 'success' : p.status === 'cancelado' ? 'danger' : 'neutral'}>{p.status}</Badge>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={colunas}
+        rows={projetos}
+        rowKey={(p) => p.id}
+        emptyTitle="Nenhum projeto cadastrado ainda"
+        emptyDescription={can('manage_projects') ? 'Use "Novo projeto" para começar.' : undefined}
+      />
     </div>
   );
 };

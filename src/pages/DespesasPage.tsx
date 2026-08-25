@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Drawer } from '../components/ui/Drawer';
 import { PageHeader } from '../components/ui/PageHeader';
-import { EmptyState } from '../components/ui/EmptyState';
+import { DataTable, type DataTableColumn } from '../components/ui/DataTable';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { PermissionState } from '../components/ui/PermissionState';
@@ -101,6 +101,40 @@ export const DespesasPage: React.FC = () => {
 
   if (!can('view_expenses')) return <PermissionState />;
 
+  const colunas: DataTableColumn<Despesa>[] = [
+    {
+      header: 'Despesa',
+      render: (d) => (
+        <div>
+          <p className="font-medium text-slate-800">{d.descricao}</p>
+          <p className="text-xs text-slate-500">
+            {TIPO_LABEL[d.tipo]} · {d.categoria} · vence {formatDate(d.data_vencimento)}
+            {d.projeto_id && ` · ${projetos.find((p) => p.id === d.projeto_id)?.nome ?? ''}`}
+          </p>
+        </div>
+      ),
+    },
+    { header: 'Valor', className: 'text-right font-medium', render: (d) => formatCurrency(d.valor) },
+    { header: 'Status', render: (d) => <Badge tone={d.status === 'pago' ? 'success' : d.status === 'cancelado' ? 'danger' : 'warning'}>{d.status}</Badge> },
+    {
+      header: 'Ações',
+      render: (d) => (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {d.status === 'provisionado' && can('mark_expense_paid') && (
+            <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'pagar' }); }}>
+              marcar paga
+            </button>
+          )}
+          {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={() => abrirEdicao(d)}>editar</button>}
+          {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-red-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'cancelar' }); }}>cancelar</button>}
+          {d.status === 'pago' && can('reverse_expense_payment') && <button className="text-xs font-medium text-amber-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'estornar' }); }}>estornar pagamento</button>}
+          {d.status === 'cancelado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'reativar' }); }}>reativar</button>}
+          <button className="text-xs font-medium text-slate-500" onClick={() => verHistorico(d)}>histórico</button>
+        </div>
+      ),
+    },
+  ];
+
   const camposFormulario = (
     <>
       <Field label="Descrição">
@@ -151,37 +185,13 @@ export const DespesasPage: React.FC = () => {
 
       {erro && !drawerAberto && <ErrorState message={erro} />}
 
-      {despesas.length === 0 ? (
-        <EmptyState title="Nenhuma despesa lançada" description={can('manage_expenses') ? 'Use "Nova despesa" para lançar a primeira.' : undefined} />
-      ) : (
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-          {despesas.map((d) => (
-            <div key={d.id} className="flex items-center justify-between px-4 py-3 text-sm">
-              <div>
-                <p className="font-medium text-slate-800">{d.descricao}</p>
-                <p className="text-xs text-slate-500">
-                  {TIPO_LABEL[d.tipo]} · {d.categoria} · vence {formatDate(d.data_vencimento)}
-                  {d.projeto_id && ` · ${projetos.find((p) => p.id === d.projeto_id)?.nome ?? ''}`}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-medium">{formatCurrency(d.valor)}</span>
-                <Badge tone={d.status === 'pago' ? 'success' : d.status === 'cancelado' ? 'danger' : 'warning'}>{d.status}</Badge>
-                {d.status === 'provisionado' && can('mark_expense_paid') && (
-                  <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'pagar' }); }}>
-                    marcar paga
-                  </button>
-                )}
-                {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={() => abrirEdicao(d)}>editar</button>}
-                {d.status === 'provisionado' && can('manage_expenses') && <button className="text-xs font-medium text-red-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'cancelar' }); }}>cancelar</button>}
-                {d.status === 'pago' && can('reverse_expense_payment') && <button className="text-xs font-medium text-amber-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'estornar' }); }}>estornar pagamento</button>}
-                {d.status === 'cancelado' && can('manage_expenses') && <button className="text-xs font-medium text-blue-600" onClick={() => { setMotivo(''); setAcao({ despesa: d, tipo: 'reativar' }); }}>reativar</button>}
-                <button className="text-xs font-medium text-slate-500" onClick={() => verHistorico(d)}>histórico</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={colunas}
+        rows={despesas}
+        rowKey={(d) => d.id}
+        emptyTitle="Nenhuma despesa lançada"
+        emptyDescription={can('manage_expenses') ? 'Use "Nova despesa" para lançar a primeira.' : undefined}
+      />
 
       <Drawer
         aberto={drawerAberto === 'nova'}

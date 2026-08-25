@@ -5,7 +5,7 @@ import { Badge, Field, Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Drawer } from '../components/ui/Drawer';
 import { PageHeader } from '../components/ui/PageHeader';
-import { EmptyState } from '../components/ui/EmptyState';
+import { DataTable, type DataTableColumn } from '../components/ui/DataTable';
 import { ErrorState } from '../components/ui/ErrorState';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
@@ -135,6 +135,31 @@ export const InvestimentosPage: React.FC = () => {
 
   if (!can('view_investments')) return <PermissionState />;
 
+  const colunas: DataTableColumn<Investimento>[] = [
+    {
+      header: 'Investimento',
+      render: (i) => (
+        <div>
+          <div className="flex items-center gap-2"><p className="font-medium text-slate-800">{i.descricao || i.tipo}</p><Badge tone={i.status === 'cancelado' ? 'neutral' : 'success'}>{i.status === 'cancelado' ? 'Cancelado' : 'Ativo'}</Badge></div>
+          <p className="text-xs text-slate-500">
+            {i.investidor_tipo === 'socio' ? nomeDoSocio(i.socio_id) : 'Consult Services'} · {nomeDoProjeto(i.projeto_id)} · {formatDate(i.data)}
+          </p>
+        </div>
+      ),
+    },
+    { header: 'Valor', className: 'text-right font-medium', render: (i) => formatCurrency(i.valor) },
+    {
+      header: 'Ações',
+      render: (i) => (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {i.status !== 'cancelado' && can('manage_investments') && <Button size="sm" variant="secondary" onClick={() => abrirEdicao(i)}>Editar</Button>}
+          <Button size="sm" variant="ghost" onClick={() => abrirHistorico(i)}>Histórico</Button>
+          {can('manage_investments') && <Button size="sm" variant={i.status === 'cancelado' ? 'secondary' : 'danger'} onClick={() => { setAcao({ investimento: i, tipo: i.status === 'cancelado' ? 'reativar' : 'cancelar' }); setMotivoAcao(''); }}>{i.status === 'cancelado' ? 'Reativar' : 'Cancelar'}</Button>}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -209,24 +234,13 @@ export const InvestimentosPage: React.FC = () => {
         </Card>
       )}
 
-      {investimentos.length === 0 ? (
-        <EmptyState title="Nenhum investimento registrado" description={can('manage_investments') ? 'Use "Novo investimento" para registrar o primeiro aporte.' : undefined} />
-      ) : (
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-          {investimentos.map((i) => (
-            <div key={i.id} className={`flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${i.status==='cancelado'?'bg-slate-50 opacity-70':''}`}>
-              <div>
-                <div className="flex items-center gap-2"><p className="font-medium text-slate-800">{i.descricao || i.tipo}</p><Badge tone={i.status==='cancelado'?'neutral':'success'}>{i.status==='cancelado'?'Cancelado':'Ativo'}</Badge></div>
-                <p className="text-xs text-slate-500">
-                  {i.investidor_tipo === 'socio' ? nomeDoSocio(i.socio_id) : 'Consult Services'} · {nomeDoProjeto(i.projeto_id)} ·{' '}
-                  {formatDate(i.data)}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2"><span className="mr-2 font-medium">{formatCurrency(i.valor)}</span>{i.status!=='cancelado'&&can('manage_investments')&&<Button size="sm" variant="secondary" onClick={()=>abrirEdicao(i)}>Editar</Button>}<Button size="sm" variant="ghost" onClick={()=>abrirHistorico(i)}>Histórico</Button>{can('manage_investments')&&<Button size="sm" variant={i.status==='cancelado'?'secondary':'danger'} onClick={()=>{setAcao({investimento:i,tipo:i.status==='cancelado'?'reativar':'cancelar'});setMotivoAcao('');}}>{i.status==='cancelado'?'Reativar':'Cancelar'}</Button>}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={colunas}
+        rows={investimentos}
+        rowKey={(i) => i.id}
+        emptyTitle="Nenhum investimento registrado"
+        emptyDescription={can('manage_investments') ? 'Use "Novo investimento" para registrar o primeiro aporte.' : undefined}
+      />
 
       <Modal aberto={Boolean(editando&&editor)} titulo="Editar investimento" descricao="A alteração será preservada no histórico." onClose={()=>{setEditando(null);setEditor(null);}} largura="lg">
         {editor&&<form onSubmit={salvarEdicao} className="grid gap-4 sm:grid-cols-2">

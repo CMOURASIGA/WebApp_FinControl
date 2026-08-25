@@ -4,6 +4,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Drawer } from '../components/ui/Drawer';
+import { DataTable, type DataTableColumn } from '../components/ui/DataTable';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingState } from '../components/ui/LoadingState';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
@@ -221,6 +222,75 @@ export const ProjetoDetalhePage: React.FC = () => {
   if (!can('view_projects')) return <PermissionState />;
   if (!projeto) return <LoadingState label="Carregando projeto..." />;
 
+  const colunasReceitas: DataTableColumn<Receita>[] = [
+    {
+      header: 'Receita',
+      render: (r) => (
+        <div>
+          <p className="font-medium text-slate-800">{r.descricao}</p>
+          <p className="text-xs text-slate-500">
+            {formatDate(r.data_fato_gerador)} · {r.emite_nota ? `nota fiscal · imposto ${r.aliquota_aplicada}%${r.tem_retencao ? ` · retenção ${r.percentual_retencao}% (${formatCurrency(r.valor_retido)})` : ''}` : 'sem nota fiscal · sem imposto'}{r.receita_origem_id && ' · ajuste de receita anterior'}
+          </p>
+        </div>
+      ),
+    },
+    { header: 'Valor', className: 'text-right font-medium', render: (r) => formatCurrency(r.valor_bruto) },
+    { header: 'Status', render: (r) => <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge> },
+    {
+      header: 'Ações',
+      render: (r) => (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && (
+            <button
+              className="text-xs font-medium text-blue-600 hover:underline"
+              onClick={async () => {
+                try { setErro(null); await receitasService.marcarRecebida(r.id, hoje()); await carregar(); }
+                catch (e) { setErro((e as Error).message); }
+              }}
+            >
+              marcar recebida
+            </button>
+          )}
+          {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
+          {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => abrirAcao(r, 'cancelar')}>cancelar</button>}
+          {r.tipo !== 'ajuste' && r.status === 'recebido' && can('manage_revenues') && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => abrirAcao(r, 'estornar')}>estornar recebimento</button>}
+          {r.tipo !== 'ajuste' && r.status === 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => abrirAcao(r, 'reativar')}>reativar</button>}
+          {r.tipo !== 'ajuste' && can('manage_revenues') && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => abrirAcao(r, 'corrigir')}>corrigir valor fechado</button>}
+          <button className="text-xs font-medium text-slate-500 hover:underline" onClick={() => abrirHistorico(r)}>histórico</button>
+        </div>
+      ),
+    },
+  ];
+
+  const colunasCustos: DataTableColumn<CustoProjeto>[] = [
+    {
+      header: 'Custo',
+      render: (c) => (
+        <div>
+          <p className="font-medium text-slate-800">{c.descricao}</p>
+          <p className="text-xs text-slate-500">{c.categoria} · {formatDate(c.data)}</p>
+        </div>
+      ),
+    },
+    { header: 'Valor', className: 'text-right', render: (c) => <span className={c.status === 'cancelado' ? 'font-medium text-slate-400 line-through' : 'font-medium text-red-600'}>-{formatCurrency(c.valor)}</span> },
+    { header: 'Status', render: (c) => <Badge tone={c.status === 'pago' ? 'success' : c.status === 'cancelado' ? 'danger' : 'warning'}>{c.status}</Badge> },
+    {
+      header: 'Ações',
+      render: (c) => (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {c.status === 'provisionado' && can('manage_expenses') && <>
+            <button className="text-xs text-blue-600" onClick={() => abrirCustoEdicao(c)}>editar</button>
+            {can('mark_expense_paid') && <button className="text-xs text-green-700" onClick={() => { setCustoMotivo(''); setCustoAcao({ custo: c, tipo: 'pagar' }); }}>marcar pago</button>}
+            <button className="text-xs text-red-600" onClick={() => { setCustoMotivo(''); setCustoAcao({ custo: c, tipo: 'cancelar' }); }}>cancelar</button>
+          </>}
+          {c.status === 'pago' && can('reverse_expense_payment') && <button className="text-xs text-amber-600" onClick={() => { setCustoMotivo(''); setCustoAcao({ custo: c, tipo: 'estornar' }); }}>estornar pagamento</button>}
+          {c.status === 'cancelado' && can('manage_expenses') && <button className="text-xs text-blue-600" onClick={() => { setCustoMotivo(''); setCustoAcao({ custo: c, tipo: 'reativar' }); }}>reativar</button>}
+          <button className="text-xs text-slate-500" onClick={async () => { try { setCustoHistorico(await custosProjetoService.listarHistorico(c.id)); } catch (e) { setErro((e as Error).message); } }}>histórico</button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
@@ -339,39 +409,8 @@ export const ProjetoDetalhePage: React.FC = () => {
           </form>
         </Modal>
 
-        <div className="mt-4 divide-y divide-slate-100">
-          {receitas.map((r) => (
-            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-              <div>
-                <p className="font-medium text-slate-800">{r.descricao}</p>
-                <p className="text-xs text-slate-500">
-                  {formatDate(r.data_fato_gerador)} · {r.emite_nota ? `nota fiscal · imposto ${r.aliquota_aplicada}%${r.tem_retencao ? ` · retenção ${r.percentual_retencao}% (${formatCurrency(r.valor_retido)})` : ''}` : 'sem nota fiscal · sem imposto'}{r.receita_origem_id && ' · ajuste de receita anterior'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-medium">{formatCurrency(r.valor_bruto)}</span>
-                <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
-                {r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && (
-                  <button
-                    className="text-xs font-medium text-blue-600 hover:underline"
-                    onClick={async () => {
-                      try { setErro(null); await receitasService.marcarRecebida(r.id, hoje()); await carregar(); }
-                      catch (e) { setErro((e as Error).message); }
-                    }}
-                  >
-                    marcar recebida
-                  </button>
-                )}
-                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => iniciarEdicao(r)}>editar</button>}
-                {r.tipo !== 'ajuste' && r.status !== 'recebido' && r.status !== 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-red-600 hover:underline" onClick={() => abrirAcao(r, 'cancelar')}>cancelar</button>}
-                {r.tipo !== 'ajuste' && r.status === 'recebido' && can('manage_revenues') && <button className="text-xs font-medium text-amber-600 hover:underline" onClick={() => abrirAcao(r, 'estornar')}>estornar recebimento</button>}
-                {r.tipo !== 'ajuste' && r.status === 'cancelado' && can('manage_revenues') && <button className="text-xs font-medium text-blue-600 hover:underline" onClick={() => abrirAcao(r, 'reativar')}>reativar</button>}
-                {r.tipo !== 'ajuste' && can('manage_revenues') && <button className="text-xs font-medium text-purple-600 hover:underline" onClick={() => abrirAcao(r, 'corrigir')}>corrigir valor fechado</button>}
-                <button className="text-xs font-medium text-slate-500 hover:underline" onClick={() => abrirHistorico(r)}>histórico</button>
-              </div>
-            </div>
-          ))}
-          {receitas.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhuma receita lançada.</p>}
+        <div className="mt-4">
+          <DataTable columns={colunasReceitas} rows={receitas} rowKey={(r) => r.id} emptyTitle="Nenhuma receita lançada" />
         </div>
         <Modal aberto={Boolean(historicoDe)} titulo="Histórico da receita" descricao="Registro das alterações e dos responsáveis por cada ação." onClose={() => setHistoricoDe(null)}><div className="divide-y">{historico.map((h) => <div key={h.id} className="py-3 text-sm"><span className="font-medium capitalize">{h.acao.replace(/_/g, ' ')}</span><span className="ml-2 text-xs text-slate-500">{new Date(h.executado_em).toLocaleString('pt-BR')}</span>{h.motivo && <p className="mt-1 text-slate-600">Motivo: {h.motivo}</p>}</div>)}{!historico.length && <p className="text-sm text-slate-500">Ainda não existem alterações.</p>}</div></Modal>
         <Modal aberto={Boolean(acaoModal)} titulo={acaoModal?.acao === 'corrigir' ? 'Corrigir receita fechada' : acaoModal?.acao === 'estornar' ? 'Estornar recebimento' : acaoModal?.acao === 'reativar' ? 'Reativar receita' : 'Cancelar receita'} descricao="Informe os dados abaixo para registrar a ação com segurança." onClose={() => setAcaoModal(null)}>
@@ -408,17 +447,8 @@ export const ProjetoDetalhePage: React.FC = () => {
             <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setDrawerNovoCustoAberto(false)}>Cancelar</Button><Button type="submit">Lançar custo</Button></div>
           </form>
         </Drawer>
-        <div className="mt-4 divide-y divide-slate-100">
-          {custos.map((c) => (
-            <div key={c.id} className="flex items-center justify-between py-2 text-sm">
-              <div>
-                <p className="font-medium text-slate-800">{c.descricao}</p>
-                <p className="text-xs text-slate-500">{c.categoria} · {formatDate(c.data)}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2"><span className={c.status==='cancelado'?'font-medium text-slate-400 line-through':'font-medium text-red-600'}>-{formatCurrency(c.valor)}</span><Badge tone={c.status==='pago'?'success':c.status==='cancelado'?'danger':'warning'}>{c.status}</Badge>{c.status==='provisionado'&&can('manage_expenses')&&<><button className="text-xs text-blue-600" onClick={()=>abrirCustoEdicao(c)}>editar</button>{can('mark_expense_paid')&&<button className="text-xs text-green-700" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'pagar'});}}>marcar pago</button>}<button className="text-xs text-red-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'cancelar'});}}>cancelar</button></>}{c.status==='pago'&&can('reverse_expense_payment')&&<button className="text-xs text-amber-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'estornar'});}}>estornar pagamento</button>}{c.status==='cancelado'&&can('manage_expenses')&&<button className="text-xs text-blue-600" onClick={()=>{setCustoMotivo('');setCustoAcao({custo:c,tipo:'reativar'});}}>reativar</button>}<button className="text-xs text-slate-500" onClick={async()=>{try{setCustoHistorico(await custosProjetoService.listarHistorico(c.id));}catch(e){setErro((e as Error).message);}}}>histórico</button></div>
-            </div>
-          ))}
-          {custos.length === 0 && <p className="py-2 text-sm text-slate-500">Nenhum custo lançado.</p>}
+        <div className="mt-4">
+          <DataTable columns={colunasCustos} rows={custos} rowKey={(c) => c.id} emptyTitle="Nenhum custo lançado" />
         </div>
         <Modal aberto={Boolean(custoEditando)} titulo="Editar custo" descricao="A alteração será registrada no histórico." onClose={()=>setCustoEditando(null)}><form onSubmit={salvarCusto} className="grid gap-4 sm:grid-cols-2"><Field label="Descrição"><Input required value={custoDescricao} onChange={e=>setCustoDescricao(e.target.value)}/></Field><Field label="Categoria"><Input required value={custoCategoria} onChange={e=>setCustoCategoria(e.target.value)}/></Field><Field label="Valor"><Input type="number" min="0" step="0.01" required value={custoValor} onChange={e=>setCustoValor(e.target.value)}/></Field><Field label="Data"><Input type="date" required value={custoData} onChange={e=>setCustoData(e.target.value)}/></Field><Field label="Motivo" className="sm:col-span-2"><Input required value={custoMotivo} onChange={e=>setCustoMotivo(e.target.value)}/></Field><div className="flex justify-end gap-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={()=>setCustoEditando(null)}>Voltar</Button><Button type="submit">Salvar</Button></div></form></Modal>
         <Modal aberto={Boolean(custoAcao)} titulo={custoAcao?.tipo==='pagar'?'Registrar pagamento':custoAcao?.tipo==='estornar'?'Estornar pagamento':custoAcao?.tipo==='cancelar'?'Cancelar custo':'Reativar custo'} onClose={()=>setCustoAcao(null)}><form onSubmit={confirmarCustoAcao} className="space-y-4"><Field label="Motivo"><Input required={custoAcao?.tipo!=='pagar'} value={custoMotivo} onChange={e=>setCustoMotivo(e.target.value)}/></Field><div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={()=>setCustoAcao(null)}>Voltar</Button><Button type="submit">Confirmar</Button></div></form></Modal>
