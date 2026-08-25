@@ -3,6 +3,10 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge, Field, Input, Select } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { Drawer } from '../components/ui/Drawer';
+import { PageHeader } from '../components/ui/PageHeader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -35,6 +39,7 @@ export const InvestimentosPage: React.FC = () => {
   const [motivoAcao, setMotivoAcao] = useState('');
   const [historicoDe, setHistoricoDe] = useState<Investimento | null>(null);
   const [historico, setHistorico] = useState<InvestimentoHistorico[]>([]);
+  const [drawerNovoAberto, setDrawerNovoAberto] = useState(false);
 
   const [investidorTipo, setInvestidorTipo] = useState<Investimento['investidor_tipo']>('socio');
   const [socioId, setSocioId] = useState('');
@@ -110,6 +115,7 @@ export const InvestimentosPage: React.FC = () => {
       setValor('');
       setDescricao('');
       setRetornoEsperado(''); setPrazoEsperado(''); setRoiMeta(''); setConsideradoNoResultado(false);
+      setDrawerNovoAberto(false);
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -131,14 +137,14 @@ export const InvestimentosPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Investimentos & ROI</h1>
-        <p className="text-sm text-slate-500">Despesa ≠ investimento: aqui você registra capital aportado e acompanha o retorno.</p>
-      </div>
+      <PageHeader
+        title="Investimentos & ROI"
+        description="Despesa ≠ investimento: aqui você registra capital aportado e acompanha o retorno."
+        action={can('manage_investments') && <Button onClick={() => { setErro(null); setDrawerNovoAberto(true); }}>Novo investimento</Button>}
+      />
 
-      {can('manage_investments') && (
-      <Card className="p-6">
-        <form onSubmit={criar} className="grid gap-3 sm:grid-cols-3">
+      <Drawer aberto={drawerNovoAberto} titulo="Novo investimento" descricao="Registre o capital aportado e a meta de retorno esperada." onClose={() => setDrawerNovoAberto(false)}>
+        <form onSubmit={criar} className="space-y-4">
           <Field label="Investidor">
             <Select value={investidorTipo} onChange={(e) => setInvestidorTipo(e.target.value as Investimento['investidor_tipo'])}>
               <option value="socio">Sócio</option>
@@ -176,18 +182,17 @@ export const InvestimentosPage: React.FC = () => {
           <Field label="Data">
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </Field>
-          <Field label="Descrição" className="sm:col-span-3">
+          <Field label="Descrição">
             <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
           </Field>
           <Field label="Retorno esperado (R$)"><Input type="number" min="0" step="0.01" value={retornoEsperado} onChange={(e)=>setRetornoEsperado(e.target.value)}/></Field>
           <Field label="Prazo esperado (meses)"><Input type="number" min="1" step="1" value={prazoEsperado} onChange={(e)=>setPrazoEsperado(e.target.value)}/></Field>
           <Field label="Meta de ROI (%)"><Input type="number" min="0" step="0.01" value={roiMeta} onChange={(e)=>setRoiMeta(e.target.value)}/></Field>
-          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm sm:col-span-3"><input type="checkbox" className="mt-1" checked={consideradoNoResultado} onChange={(e)=>setConsideradoNoResultado(e.target.checked)}/><span><strong className="block text-slate-800">Este capital já foi lançado como custo ou despesa</strong><span className="text-xs leading-5 text-slate-500">Marque apenas para impedir que o investimento seja descontado novamente no ROI.</span></span></label>
-          {erro && <p className="text-sm text-red-600 sm:col-span-3">{erro}</p>}
-          <Button type="submit" className="sm:col-span-3">Registrar investimento</Button>
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm"><input type="checkbox" className="mt-1" checked={consideradoNoResultado} onChange={(e)=>setConsideradoNoResultado(e.target.checked)}/><span><strong className="block text-slate-800">Este capital já foi lançado como custo ou despesa</strong><span className="text-xs leading-5 text-slate-500">Marque apenas para impedir que o investimento seja descontado novamente no ROI.</span></span></label>
+          {erro && <ErrorState message={erro} />}
+          <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setDrawerNovoAberto(false)}>Cancelar</Button><Button type="submit">Registrar investimento</Button></div>
         </form>
-      </Card>
-      )}
+      </Drawer>
 
       {Object.keys(roiPorProjeto).length > 0 && (
         <Card className="p-6">
@@ -204,21 +209,24 @@ export const InvestimentosPage: React.FC = () => {
         </Card>
       )}
 
-      <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-        {investimentos.map((i) => (
-          <div key={i.id} className={`flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${i.status==='cancelado'?'bg-slate-50 opacity-70':''}`}>
-            <div>
-              <div className="flex items-center gap-2"><p className="font-medium text-slate-800">{i.descricao || i.tipo}</p><Badge tone={i.status==='cancelado'?'neutral':'success'}>{i.status==='cancelado'?'Cancelado':'Ativo'}</Badge></div>
-              <p className="text-xs text-slate-500">
-                {i.investidor_tipo === 'socio' ? nomeDoSocio(i.socio_id) : 'Consult Services'} · {nomeDoProjeto(i.projeto_id)} ·{' '}
-                {formatDate(i.data)}
-              </p>
+      {investimentos.length === 0 ? (
+        <EmptyState title="Nenhum investimento registrado" description={can('manage_investments') ? 'Use "Novo investimento" para registrar o primeiro aporte.' : undefined} />
+      ) : (
+        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+          {investimentos.map((i) => (
+            <div key={i.id} className={`flex flex-col gap-3 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${i.status==='cancelado'?'bg-slate-50 opacity-70':''}`}>
+              <div>
+                <div className="flex items-center gap-2"><p className="font-medium text-slate-800">{i.descricao || i.tipo}</p><Badge tone={i.status==='cancelado'?'neutral':'success'}>{i.status==='cancelado'?'Cancelado':'Ativo'}</Badge></div>
+                <p className="text-xs text-slate-500">
+                  {i.investidor_tipo === 'socio' ? nomeDoSocio(i.socio_id) : 'Consult Services'} · {nomeDoProjeto(i.projeto_id)} ·{' '}
+                  {formatDate(i.data)}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2"><span className="mr-2 font-medium">{formatCurrency(i.valor)}</span>{i.status!=='cancelado'&&can('manage_investments')&&<Button size="sm" variant="secondary" onClick={()=>abrirEdicao(i)}>Editar</Button>}<Button size="sm" variant="ghost" onClick={()=>abrirHistorico(i)}>Histórico</Button>{can('manage_investments')&&<Button size="sm" variant={i.status==='cancelado'?'secondary':'danger'} onClick={()=>{setAcao({investimento:i,tipo:i.status==='cancelado'?'reativar':'cancelar'});setMotivoAcao('');}}>{i.status==='cancelado'?'Reativar':'Cancelar'}</Button>}</div>
             </div>
-            <div className="flex flex-wrap items-center gap-2"><span className="mr-2 font-medium">{formatCurrency(i.valor)}</span>{i.status!=='cancelado'&&can('manage_investments')&&<Button size="sm" variant="secondary" onClick={()=>abrirEdicao(i)}>Editar</Button>}<Button size="sm" variant="ghost" onClick={()=>abrirHistorico(i)}>Histórico</Button>{can('manage_investments')&&<Button size="sm" variant={i.status==='cancelado'?'secondary':'danger'} onClick={()=>{setAcao({investimento:i,tipo:i.status==='cancelado'?'reativar':'cancelar'});setMotivoAcao('');}}>{i.status==='cancelado'?'Reativar':'Cancelar'}</Button>}</div>
-          </div>
-        ))}
-        {investimentos.length === 0 && <p className="px-4 py-3 text-sm text-slate-500">Nenhum investimento registrado.</p>}
-      </div>
+          ))}
+        </div>
+      )}
 
       <Modal aberto={Boolean(editando&&editor)} titulo="Editar investimento" descricao="A alteração será preservada no histórico." onClose={()=>{setEditando(null);setEditor(null);}} largura="lg">
         {editor&&<form onSubmit={salvarEdicao} className="grid gap-4 sm:grid-cols-2">

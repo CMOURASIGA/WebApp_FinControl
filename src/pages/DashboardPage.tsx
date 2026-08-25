@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LoadingState } from '../components/ui/LoadingState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useCapabilities } from '../hooks/useCapabilities';
 import { relatoriosService, type DREPeriodo } from '../services/relatoriosService';
@@ -83,24 +86,24 @@ export const DashboardPage: React.FC = () => {
     ? dreRealizada.consolidadoProjetos.receitaBruta - breakEven.faturamentoMinimo : 0;
 
   if (!can('view_dashboard')) return <PermissionState />;
-  if (carregando) return <p className="text-sm text-slate-500">Carregando painel...</p>;
-  if (erro) return <p className="text-sm text-red-600">Erro ao carregar dashboard: {erro}</p>;
+  if (carregando) return <LoadingState label="Carregando painel..." />;
+  if (erro) return <ErrorState message={`Erro ao carregar dashboard: ${erro}`} />;
   if (!dre || !dreRealizada) return null;
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Visão Geral</h1>
-          <p className="text-sm text-slate-500 capitalize">{nomeDoMes(mes)}</p>
-        </div>
-        <input
-          type="month"
-          value={mes}
-          onChange={(e) => setMes(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        />
-      </div>
+      <PageHeader
+        title="Visão Geral"
+        description={<span className="capitalize">{nomeDoMes(mes)}</span>}
+        action={
+          <input
+            type="month"
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
+        }
+      />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Consult Services</h2>

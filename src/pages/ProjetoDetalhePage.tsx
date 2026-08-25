@@ -3,6 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { Drawer } from '../components/ui/Drawer';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingState } from '../components/ui/LoadingState';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
 import { PermissionState } from '../components/ui/PermissionState';
@@ -89,6 +92,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [valorCorreto, setValorCorreto] = useState('');
   const [historico, setHistorico] = useState<ReceitaHistorico[]>([]);
   const [historicoDe, setHistoricoDe] = useState<string | null>(null);
+  const [drawerNovaReceitaAberto, setDrawerNovaReceitaAberto] = useState(false);
 
   const iniciarEdicao = (r: Receita) => {
     setEditando(r); setEditDescricao(r.descricao); setEditValor(String(r.valor_bruto));
@@ -136,6 +140,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       setDescricao('');
       setValorBruto('');
       setEmiteNota(null); setTemRetencao(false); setPercentualRetencao('0');
+      setDrawerNovaReceitaAberto(false);
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -151,6 +156,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [custoAcao,setCustoAcao]=useState<{custo:CustoProjeto;tipo:'pagar'|'estornar'|'cancelar'|'reativar'}|null>(null);
   const [custoMotivo,setCustoMotivo]=useState('');
   const [custoHistorico,setCustoHistorico]=useState<FinanceiroHistorico[]|null>(null);
+  const [drawerNovoCustoAberto, setDrawerNovoCustoAberto] = useState(false);
 
   const criarCusto = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,6 +173,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       });
       setCustoDescricao('');
       setCustoValor('');
+      setDrawerNovoCustoAberto(false);
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -212,7 +219,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   const nomeDoSocio = (idSocio: string) => socios.find((s) => s.id === idSocio)?.nome ?? idSocio;
 
   if (!can('view_projects')) return <PermissionState />;
-  if (!projeto) return <p className="text-sm text-slate-500">Carregando projeto...</p>;
+  if (!projeto) return <LoadingState label="Carregando projeto..." />;
 
   return (
     <div className="space-y-8">
@@ -224,7 +231,7 @@ export const ProjetoDetalhePage: React.FC = () => {
         <p className="text-sm text-slate-500">{projeto.origem_economica}</p>
       </div>
 
-      {erro && <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{erro}</p>}
+      {erro && <ErrorState message={erro} />}
 
       {/* Resultado / DRE do projeto */}
       <Card className="p-6">
@@ -284,34 +291,39 @@ export const ProjetoDetalhePage: React.FC = () => {
 
       {/* Receitas */}
       <Card className="p-6">
-        <h2 className="font-semibold text-slate-900">Receitas</h2>
-        {can('manage_revenues') && (
-        <form onSubmit={criarReceita} className="mt-4 grid gap-3 sm:grid-cols-5 sm:items-end">
-          <Field label="Descrição" className="sm:col-span-2">
-            <Input required value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Implantação CRM Empresa A" />
-          </Field>
-          <Field label="Valor bruto (R$)">
-            <Input type="number" step="0.01" min="0" required value={valorBruto} onChange={(e) => setValorBruto(e.target.value)} />
-          </Field>
-          <Field label="Tipo">
-            <Select value={tipoReceita} onChange={(e) => setTipoReceita(e.target.value as Receita['tipo'])}>
-              <option value="pontual">Pontual</option>
-              <option value="recorrente">Recorrente</option>
-            </Select>
-          </Field>
-          <Field label="Data do fato gerador">
-            <Input type="date" value={dataFato} onChange={(e) => setDataFato(e.target.value)} />
-          </Field>
-          <Field label="Emite nota fiscal?">
-            <Select required value={emiteNota === null ? '' : String(emiteNota)} onChange={(e) => { const valor = e.target.value === 'true'; setEmiteNota(valor); if (!valor) { setTemRetencao(false); setPercentualRetencao('0'); } }}>
-              <option value="" disabled>Selecione</option><option value="true">Sim</option><option value="false">Não</option>
-            </Select>
-          </Field>
-          {emiteNota && <Field label="Possui retenção?"><Select value={String(temRetencao)} onChange={(e) => setTemRetencao(e.target.value === 'true')}><option value="false">Não</option><option value="true">Sim</option></Select></Field>}
-          {emiteNota && temRetencao && <Field label="Retenção (%)"><Input type="number" min="0" max="100" step="0.001" required value={percentualRetencao} onChange={(e) => setPercentualRetencao(e.target.value)} /></Field>}
-          <Button type="submit" size="sm" className="sm:col-span-5">Lançar receita</Button>
-        </form>
-        )}
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-slate-900">Receitas</h2>
+          {can('manage_revenues') && <Button size="sm" onClick={() => { setDescricao(''); setValorBruto(''); setEmiteNota(null); setTemRetencao(false); setPercentualRetencao('0'); setErro(null); setDrawerNovaReceitaAberto(true); }}>Nova receita</Button>}
+        </div>
+
+        <Drawer aberto={drawerNovaReceitaAberto} titulo="Nova receita" descricao="Imposto só incide sobre receita com nota fiscal, conforme a regra vigente." onClose={() => setDrawerNovaReceitaAberto(false)}>
+          <form onSubmit={criarReceita} className="space-y-4">
+            <Field label="Descrição">
+              <Input required value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Implantação CRM Empresa A" />
+            </Field>
+            <Field label="Valor bruto (R$)">
+              <Input type="number" step="0.01" min="0" required value={valorBruto} onChange={(e) => setValorBruto(e.target.value)} />
+            </Field>
+            <Field label="Tipo">
+              <Select value={tipoReceita} onChange={(e) => setTipoReceita(e.target.value as Receita['tipo'])}>
+                <option value="pontual">Pontual</option>
+                <option value="recorrente">Recorrente</option>
+              </Select>
+            </Field>
+            <Field label="Data do fato gerador">
+              <Input type="date" value={dataFato} onChange={(e) => setDataFato(e.target.value)} />
+            </Field>
+            <Field label="Emite nota fiscal?">
+              <Select required value={emiteNota === null ? '' : String(emiteNota)} onChange={(e) => { const valor = e.target.value === 'true'; setEmiteNota(valor); if (!valor) { setTemRetencao(false); setPercentualRetencao('0'); } }}>
+                <option value="" disabled>Selecione</option><option value="true">Sim</option><option value="false">Não</option>
+              </Select>
+            </Field>
+            {emiteNota && <Field label="Possui retenção?"><Select value={String(temRetencao)} onChange={(e) => setTemRetencao(e.target.value === 'true')}><option value="false">Não</option><option value="true">Sim</option></Select></Field>}
+            {emiteNota && temRetencao && <Field label="Retenção (%)"><Input type="number" min="0" max="100" step="0.001" required value={percentualRetencao} onChange={(e) => setPercentualRetencao(e.target.value)} /></Field>}
+            {erro && <ErrorState message={erro} />}
+            <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setDrawerNovaReceitaAberto(false)}>Cancelar</Button><Button type="submit">Lançar receita</Button></div>
+          </form>
+        </Drawer>
 
         <Modal aberto={Boolean(editando)} titulo="Editar receita" descricao="A alteração ficará registrada no histórico financeiro." onClose={() => setEditando(null)} largura="lg">
           <form onSubmit={salvarEdicao} className="grid gap-4 sm:grid-cols-2">
@@ -373,24 +385,29 @@ export const ProjetoDetalhePage: React.FC = () => {
 
       {/* Custos diretos */}
       <Card className="p-6">
-        <h2 className="font-semibold text-slate-900">Custos diretos do projeto</h2>
-        {can('manage_expenses') && (
-        <form onSubmit={criarCusto} className="mt-4 grid gap-3 sm:grid-cols-5 sm:items-end">
-          <Field label="Descrição" className="sm:col-span-2">
-            <Input required value={custoDescricao} onChange={(e) => setCustoDescricao(e.target.value)} placeholder="Vercel / OpenAI / freelancer..." />
-          </Field>
-          <Field label="Categoria">
-            <Input value={custoCategoria} onChange={(e) => setCustoCategoria(e.target.value)} />
-          </Field>
-          <Field label="Valor (R$)">
-            <Input type="number" step="0.01" min="0" required value={custoValor} onChange={(e) => setCustoValor(e.target.value)} />
-          </Field>
-          <Field label="Data">
-            <Input type="date" value={custoData} onChange={(e) => setCustoData(e.target.value)} />
-          </Field>
-          <Button type="submit" size="sm" className="sm:col-span-5">Lançar custo</Button>
-        </form>
-        )}
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-slate-900">Custos diretos do projeto</h2>
+          {can('manage_expenses') && <Button size="sm" onClick={() => { setCustoDescricao(''); setCustoValor(''); setErro(null); setDrawerNovoCustoAberto(true); }}>Novo custo</Button>}
+        </div>
+
+        <Drawer aberto={drawerNovoCustoAberto} titulo="Novo custo do projeto" descricao="Custo direto entra no resultado líquido do projeto, antes da distribuição." onClose={() => setDrawerNovoCustoAberto(false)}>
+          <form onSubmit={criarCusto} className="space-y-4">
+            <Field label="Descrição">
+              <Input required value={custoDescricao} onChange={(e) => setCustoDescricao(e.target.value)} placeholder="Vercel / OpenAI / freelancer..." />
+            </Field>
+            <Field label="Categoria">
+              <Input value={custoCategoria} onChange={(e) => setCustoCategoria(e.target.value)} />
+            </Field>
+            <Field label="Valor (R$)">
+              <Input type="number" step="0.01" min="0" required value={custoValor} onChange={(e) => setCustoValor(e.target.value)} />
+            </Field>
+            <Field label="Data">
+              <Input type="date" value={custoData} onChange={(e) => setCustoData(e.target.value)} />
+            </Field>
+            {erro && <ErrorState message={erro} />}
+            <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setDrawerNovoCustoAberto(false)}>Cancelar</Button><Button type="submit">Lançar custo</Button></div>
+          </form>
+        </Drawer>
         <div className="mt-4 divide-y divide-slate-100">
           {custos.map((c) => (
             <div key={c.id} className="flex items-center justify-between py-2 text-sm">

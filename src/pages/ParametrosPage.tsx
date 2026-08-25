@@ -4,6 +4,8 @@ import { Button } from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { SplitSociosEditor, splitValido } from '../components/SplitSociosEditor';
+import { PageHeader } from '../components/ui/PageHeader';
+import { ErrorState } from '../components/ui/ErrorState';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
 import { useBrand } from '../contexts/BrandContext';
@@ -147,16 +149,13 @@ export const ParametrosPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Parâmetros Configuráveis</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Nada aqui é fixo no código: alíquota e regra de distribuição valem por vigência. Ao salvar um novo valor, o
-          anterior é encerrado automaticamente e o histórico é preservado.
-        </p>
-      </div>
+      <PageHeader
+        title="Parâmetros Configuráveis"
+        description="Nada aqui é fixo no código: alíquota e regra de distribuição valem por vigência. Ao salvar um novo valor, o anterior é encerrado automaticamente e o histórico é preservado."
+      />
 
       {msg && <p className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">{msg}</p>}
-      {erro && <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{erro}</p>}
+      {erro && <ErrorState message={erro} />}
 
       {socios.length === 0 && (
         <p className="rounded-md bg-amber-50 px-4 py-2 text-sm text-amber-700">

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Input';
+import { PageHeader } from '../components/ui/PageHeader';
+import { ErrorState } from '../components/ui/ErrorState';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -70,27 +72,27 @@ export const FechamentoPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Fechamento Mensal & DRE</h1>
-          <p className="text-sm text-slate-500 capitalize">{nomeDoMes(mes)}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm" />
-          {fechamentoAtual?.status === 'fechado' ? (
-            <Badge tone="success">Fechado em {new Date(fechamentoAtual.fechado_em ?? '').toLocaleDateString('pt-BR')}</Badge>
-          ) : can('close_period') ? (
-            <Button onClick={fechar} disabled={carregando}>
-              Fechar mês
-            </Button>
-          ) : (
-            <Badge tone="neutral">Aberto — só admin/financeiro pode fechar</Badge>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Fechamento Mensal & DRE"
+        description={<span className="capitalize">{nomeDoMes(mes)}</span>}
+        action={
+          <div className="flex items-center gap-3">
+            <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm" />
+            {fechamentoAtual?.status === 'fechado' ? (
+              <Badge tone="success">Fechado em {new Date(fechamentoAtual.fechado_em ?? '').toLocaleDateString('pt-BR')}</Badge>
+            ) : can('close_period') ? (
+              <Button onClick={fechar} disabled={carregando}>
+                Fechar mês
+              </Button>
+            ) : (
+              <Badge tone="neutral">Aberto — só admin/financeiro pode fechar</Badge>
+            )}
+          </div>
+        }
+      />
 
       {msg && <p className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">{msg}</p>}
-      {erro && <p className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{erro}</p>}
+      {erro && <ErrorState message={erro} />}
 
       {dre && (
         <Card className="p-6">

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Field, Input } from '../components/ui/Input';
+import { PageHeader } from '../components/ui/PageHeader';
 import { PermissionState } from '../components/ui/PermissionState';
 import { SplitSociosEditor } from '../components/SplitSociosEditor';
 import { useCapabilities } from '../hooks/useCapabilities';
@@ -65,10 +66,7 @@ export const SimuladorPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Simulador Tributário</h1>
-        <p className="text-sm text-slate-500">Testa cenários sem alterar nenhum dado real.</p>
-      </div>
+      <PageHeader title="Simulador Tributário" description="Testa cenários sem alterar nenhum dado real." />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-6 space-y-4">

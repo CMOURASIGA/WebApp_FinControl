@@ -11,6 +11,12 @@ interface StatCardProps {
 
 const trendIcon = { up: '↑', down: '↓', flat: '→' };
 
+/**
+ * KpiCard (nome usado em docs/02-design/DESIGN_SYSTEM.md) — mantido aqui
+ * como `StatCard` para não forçar reescrita das páginas que já importam
+ * esse nome; `KpiCard` é o mesmo componente, exportado com o nome oficial
+ * do design system para telas novas.
+ */
 export const StatCard: React.FC<StatCardProps> = ({ label, value, hint, trend, tone = 'default' }) => {
   const valueColor = tone === 'positive' ? 'text-green-600' : tone === 'negative' ? 'text-red-600' : 'text-slate-900';
   return (
@@ -24,3 +30,6 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, hint, trend, t
     </Card>
   );
 };
+
+export const KpiCard = StatCard;
+export type KpiCardProps = StatCardProps;

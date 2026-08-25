@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Drawer } from '../components/ui/Drawer';
+import { PageHeader } from '../components/ui/PageHeader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { Field, Input, Select, Badge } from '../components/ui/Input';
 import { PermissionState } from '../components/ui/PermissionState';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,7 +28,7 @@ export const ProjetosPage: React.FC = () => {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const [drawerAberto, setDrawerAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const [nome, setNome] = useState('');
@@ -46,6 +50,8 @@ export const ProjetosPage: React.FC = () => {
   useEffect(() => {
     carregar();
   }, []);
+
+  const abrirNovo = () => { setNome(''); setNovoClienteNome(''); setErro(null); setDrawerAberto(true); };
 
   const criar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +75,7 @@ export const ProjetosPage: React.FC = () => {
       });
       setNome('');
       setNovoClienteNome('');
-      setMostrarForm(false);
+      setDrawerAberto(false);
       carregar();
     } catch (e) {
       setErro((e as Error).message);
@@ -80,74 +86,73 @@ export const ProjetosPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Projetos & Receitas</h1>
-          <p className="text-sm text-slate-500">Cada projeto carrega sua própria regra de distribuição.</p>
+      <PageHeader
+        title="Projetos & Receitas"
+        description="Cada projeto carrega sua própria regra de distribuição."
+        action={can('manage_projects') && <Button onClick={abrirNovo}>Novo projeto</Button>}
+      />
+
+      <Drawer aberto={drawerAberto} titulo="Novo projeto" descricao="Depois de criado, receitas e custos diretos são lançados na página do projeto." onClose={() => setDrawerAberto(false)} largura="lg">
+        <form onSubmit={criar} className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nome do projeto" className="sm:col-span-2">
+            <Input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Implantação CRM — Taven" />
+          </Field>
+          <Field label="Tipo">
+            <Select value={tipo} onChange={(e) => setTipo(e.target.value as Projeto['tipo'])}>
+              {Object.entries(TIPO_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Cliente existente">
+            <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+              <option value="">— nenhum / novo abaixo —</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Ou novo cliente" hint="Deixe em branco se selecionou um cliente acima" className="sm:col-span-2">
+            <Input value={novoClienteNome} onChange={(e) => setNovoClienteNome(e.target.value)} placeholder="Nome do cliente" />
+          </Field>
+          <Field label="Origem econômica" className="sm:col-span-2" hint="Descritivo: de quem é o negócio (ex.: Christian, Sócio, Compartilhado)">
+            <Input value={origem} onChange={(e) => setOrigem(e.target.value)} />
+          </Field>
+          <Field label="Sócio originador">
+            <Select value={originadorSocioId} onChange={(e) => setOriginadorSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
+          </Field>
+          <Field label="Responsável comercial">
+            <Select value={responsavelComercialSocioId} onChange={(e) => setResponsavelComercialSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
+          </Field>
+          <Field label="Responsável pela execução" className="sm:col-span-2">
+            <Select value={responsavelExecucaoSocioId} onChange={(e) => setResponsavelExecucaoSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
+          </Field>
+          {erro && <ErrorState message={erro} className="sm:col-span-2" />}
+          <div className="flex justify-end gap-2 sm:col-span-2 pt-2"><Button type="button" variant="secondary" onClick={() => setDrawerAberto(false)}>Cancelar</Button><Button type="submit">Criar projeto</Button></div>
+        </form>
+      </Drawer>
+
+      {projetos.length === 0 ? (
+        <EmptyState title="Nenhum projeto cadastrado ainda" description={can('manage_projects') ? 'Use "Novo projeto" para começar.' : undefined} />
+      ) : (
+        <div className="grid gap-3">
+          {projetos.map((p) => (
+            <Link key={p.id} to={`/projetos/${p.id}`}>
+              <Card className="flex items-center justify-between p-4 transition-shadow hover:shadow-md">
+                <div>
+                  <p className="font-semibold text-slate-900">{p.nome}</p>
+                  <p className="text-sm text-slate-500">{TIPO_LABEL[p.tipo]} · {p.origem_economica}</p>
+                </div>
+                <Badge tone={p.status === 'ativo' ? 'success' : p.status === 'cancelado' ? 'danger' : 'neutral'}>{p.status}</Badge>
+              </Card>
+            </Link>
+          ))}
         </div>
-        {can('manage_projects') && <Button onClick={() => setMostrarForm((v) => !v)}>{mostrarForm ? 'Cancelar' : 'Novo projeto'}</Button>}
-      </div>
-
-      {mostrarForm && can('manage_projects') && (
-        <Card className="p-6">
-          <form onSubmit={criar} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome do projeto">
-              <Input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Implantação CRM — Taven" />
-            </Field>
-            <Field label="Tipo">
-              <Select value={tipo} onChange={(e) => setTipo(e.target.value as Projeto['tipo'])}>
-                {Object.entries(TIPO_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Cliente existente">
-              <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                <option value="">— nenhum / novo abaixo —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Ou novo cliente" hint="Deixe em branco se selecionou um cliente acima">
-              <Input value={novoClienteNome} onChange={(e) => setNovoClienteNome(e.target.value)} placeholder="Nome do cliente" />
-            </Field>
-            <Field label="Origem econômica" className="sm:col-span-2" hint="Descritivo: de quem é o negócio (ex.: Christian, Sócio, Compartilhado)">
-              <Input value={origem} onChange={(e) => setOrigem(e.target.value)} />
-            </Field>
-            <Field label="Sócio originador">
-              <Select value={originadorSocioId} onChange={(e) => setOriginadorSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
-            </Field>
-            <Field label="Responsável comercial">
-              <Select value={responsavelComercialSocioId} onChange={(e) => setResponsavelComercialSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
-            </Field>
-            <Field label="Responsável pela execução" className="sm:col-span-2">
-              <Select value={responsavelExecucaoSocioId} onChange={(e) => setResponsavelExecucaoSocioId(e.target.value)}><option value="">Não definido</option>{socios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select>
-            </Field>
-            {erro && <p className="text-sm text-red-600 sm:col-span-2">{erro}</p>}
-            <Button type="submit" className="sm:col-span-2">Criar projeto</Button>
-          </form>
-        </Card>
       )}
-
-      <div className="grid gap-3">
-        {projetos.map((p) => (
-          <Link key={p.id} to={`/projetos/${p.id}`}>
-            <Card className="flex items-center justify-between p-4 transition-shadow hover:shadow-md">
-              <div>
-                <p className="font-semibold text-slate-900">{p.nome}</p>
-                <p className="text-sm text-slate-500">{TIPO_LABEL[p.tipo]} · {p.origem_economica}</p>
-              </div>
-              <Badge tone={p.status === 'ativo' ? 'success' : p.status === 'cancelado' ? 'danger' : 'neutral'}>{p.status}</Badge>
-            </Card>
-          </Link>
-        ))}
-        {projetos.length === 0 && <p className="text-sm text-slate-500">Nenhum projeto cadastrado ainda.</p>}
-      </div>
     </div>
   );
 };
