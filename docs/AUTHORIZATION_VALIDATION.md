@@ -40,6 +40,28 @@ As RPCs `fechar_mes` e `registrar_retirada_socio` também checam
 | `use_orion` | N/A (Orion não implementada) | Concedida a todos os perfis ativos; cada tool da Orion deverá repetir a checagem de capability granular na Fase 4 (ex.: `get_expense_summary` só roda se o usuário tiver `view_expenses`). |
 | `orion_write_actions` | N/A | Não concedida a nenhum perfil nesta fase — Orion V1 é somente leitura. |
 
+## Atualização — gap de conta corrente fechado (migration 0012)
+
+O gap #2 desta lista foi corrigido por
+`supabase/migrations/0012_protecao_conta_corrente_socio.sql`:
+
+- Modelagem confirmada antes de qualquer alteração: `profiles.id` é 1:1
+  com `auth.users.id` (`auth.uid() = profiles.id`), e
+  `socios.profile_id uuid unique references profiles(id)` já existia
+  desde `0004_operacao_financeira_segura.sql` — vínculo por FK, nunca
+  por nome/CPF/e-mail.
+- Nova função `private.pode_ver_conta_corrente(p_socio_id uuid)` e nova
+  policy `socio_lancamentos_select`: admin e financeiro continuam vendo
+  tudo (mesma superfície que já tinham para gravar); um profile com
+  `papel = 'socio'` só vê linhas do sócio ligado ao seu `profile_id`;
+  `consulta` (e qualquer outro caso) não vê nada.
+- Isolamento coberto por `supabase/tests/0012_conta_corrente_isolamento.sql`
+  (5 cenários: admin, financeiro, sócio A próprio, sócio A bloqueado em
+  dados do sócio B, consulta sem acesso). **Ainda não executado contra
+  um banco real** — o 7Finance não tem projeto Supabase próprio
+  provisionado nesta data; rodar assim que o projeto existir (ver
+  checklist no README, seção "Configurando o Supabase").
+
 ## Gaps identificados (não corrigidos nesta fase, por decisão de escopo)
 
 1. **Granularidade única no banco.** A RLS atual não distingue
@@ -55,21 +77,20 @@ As RPCs `fechar_mes` e `registrar_retirada_socio` também checam
    `AUTHORIZATION.md` (seção 6) já aponta para o desenho multiempresa.
    Recomenda-se tratar isso junto da Fase 6 (multiempresa), quando as
    tabelas de capabilities por tenant forem desenhadas de qualquer forma.
-2. **`view_partner_account` não tem contrapartida em RLS.** A UI esconde
-   saldo/conta corrente de sócios para o perfil `consulta`, mas a RLS de
-   `socio_lancamentos` permite `select` a qualquer `usuario_ativo()` —
-   ou seja, um `consulta` que chame a tabela diretamente ainda consegue
-   ler. Isso é aceitável como comportamento atual (nenhum dado é alterado,
-   e o Product Spec não pede reserva estrita ali), mas deve ser
-   resolvido com uma policy dedicada se a empresa quiser reservar conta
-   corrente de sócios estritamente a admin/financeiro/socio.
+2. ~~`view_partner_account` não tem contrapartida em RLS~~ — **resolvido**,
+   ver "Atualização — gap de conta corrente fechado (migration 0012)"
+   acima. Continua em aberto, e fora do escopo de 0012 por decisão
+   deliberada, o mesmo tipo de exposição em `socios` (CPF/chave
+   PIX/telefone legíveis por qualquer `usuario_ativo()`) e em
+   `investimentos.socio_id` — se a operação quiser o mesmo isolamento
+   ali, é uma migration separada, no mesmo padrão de
+   `pode_ver_conta_corrente`.
 3. **`reopen_period` sem RPC.** Não há função de reabertura de
    competência fechada. Antes de expor qualquer botão de "reabrir mês" no
    frontend, é obrigatório criar a RPC com auditoria e motivo, conforme
    `docs/00-product/PRODUCT_SPEC.md` §4.6.
 
-Nenhuma migration foi alterada ou criada nesta fase — a base de dados
-permanece exatamente como estava. Os gaps acima são material para a
-próxima rodada de hardening (Fase 5) ou para o desenho de multiempresa
-(Fase 6), não bloqueiam a entrega da Fase 1 porque nenhum deles amplia
+Nenhuma migration antiga foi alterada — `0012` é aditiva. Os gaps
+restantes acima são material para a próxima rodada de hardening (Fase
+5) ou para o desenho de multiempresa (Fase 6); nenhum deles amplia
 acesso além do que já existia antes desta implementação.

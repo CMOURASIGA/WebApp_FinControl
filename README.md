@@ -24,15 +24,22 @@ Este é um sistema de controle da **empresa** — nenhuma tela ou tabela guarda 
 
 ## Configurando o Supabase
 
-1. Crie um projeto em [supabase.com](https://supabase.com).
-2. No SQL Editor do projeto, rode **em ordem** as migrations `0001`, `0002`, `0003` e `0004` de [`supabase/migrations`](supabase/migrations). Em uma base que já possui as três primeiras, execute somente `0004_operacao_financeira_segura.sql`.
-3. Em **Project Settings → API**, copie a `Project URL` e a chave `anon public`.
-4. Copie `.env.example` para `.env.local` e preencha:
+> **Status atual (2026-08):** o 7Finance ainda não tem um projeto Supabase
+> próprio provisionado. O ambiente de apresentação/validação roda com dados
+> mocados. As migrations abaixo já estão todas no repositório e prontas
+> para aplicar assim que o projeto for criado — nenhuma delas depende de
+> nada além da ordem numérica.
+
+1. Crie um projeto em [supabase.com](https://supabase.com) — dedicado ao 7Finance (não reaproveitar projeto de outro produto da suíte).
+2. No SQL Editor do projeto (ou via `supabase db push` com a CLI), rode **em ordem numérica, todas** as migrations de [`supabase/migrations`](supabase/migrations) — hoje `0001` até `0012`. Cada uma parte de onde a anterior parou; não pule nenhuma.
+3. Rode [`supabase/tests/0012_conta_corrente_isolamento.sql`](supabase/tests/0012_conta_corrente_isolamento.sql) no mesmo projeto para confirmar o isolamento de conta corrente entre sócios (admin/financeiro veem tudo, cada sócio só vê o próprio extrato, consulta não vê nenhum). O script cria fixtures, valida e desfaz tudo com `ROLLBACK` — não precisa limpar nada depois.
+4. Em **Project Settings → API**, copie a `Project URL` e a chave `anon public`.
+5. Copie `.env.example` para `.env.local` e preencha:
    ```
    VITE_SUPABASE_URL=...
    VITE_SUPABASE_ANON_KEY=...
    ```
-5. Em **Authentication → Providers**, deixe e-mail/senha habilitado (é o método usado pela tela de login). Se quiser pular a confirmação por e-mail em desenvolvimento, desative "Confirm email" nas configurações de Auth.
+6. Em **Authentication → Providers**, deixe e-mail/senha habilitado (é o método usado pela tela de login). Se quiser pular a confirmação por e-mail em desenvolvimento, desative "Confirm email" nas configurações de Auth.
 
 ## Rodando localmente
 
