@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -8,7 +8,7 @@ import { PRODUCT_DESCRIPTION } from '../lib/brand';
 import { useBrand } from '../contexts/BrandContext';
 
 export const LoginPage: React.FC = () => {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, demoModeAtivo } = useAuth();
   const { brand } = useBrand();
   const navigate = useNavigate();
   const [modo, setModo] = useState<'login' | 'cadastro'>('login');
@@ -18,6 +18,11 @@ export const LoginPage: React.FC = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+
+  // Raia de demo/desenvolvimento sem Supabase (VITE_SKIP_AUTH): não há o
+  // que logar, o ProtectedRoute já libera o acesso — evita mostrar um
+  // formulário de login que não serve para nada nesse cenário.
+  if (demoModeAtivo) return <Navigate to="/" replace />;
 
   const submeter = async (e: React.FormEvent) => {
     e.preventDefault();

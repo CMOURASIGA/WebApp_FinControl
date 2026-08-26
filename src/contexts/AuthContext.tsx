@@ -8,6 +8,7 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  demoModeAtivo: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -15,10 +16,28 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Raia de demonstração/desenvolvimento sem Supabase provisionado: quando
+// VITE_SKIP_AUTH=true, pula a tela de login e libera o app com um perfil
+// sintético (papel admin, todas as capabilities). Nunca deve ser setada no
+// ambiente de produção — o default (variável ausente) é sempre exigir
+// login real, então esquecer de configurar em produção é o caso seguro.
+const demoModeAtivo = import.meta.env.VITE_SKIP_AUTH === 'true';
+
+const PERFIL_DEMO: Profile = {
+  id: 'demo-sem-login',
+  nome: 'Visitante (modo demonstração)',
+  cpf: null,
+  chave_pix: null,
+  papel: 'admin',
+  ativo: true,
+  created_at: new Date(0).toISOString(),
+  updated_at: new Date(0).toISOString(),
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(demoModeAtivo ? PERFIL_DEMO : null);
+  const [loading, setLoading] = useState(!demoModeAtivo);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -26,6 +45,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    if (demoModeAtivo) return; // sem chamada de auth nenhuma nesta raia
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       if (data.session?.user) loadProfile(data.session.user.id);
@@ -45,11 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {
+    if (demoModeAtivo) return { error: 'Modo demonstração: login desabilitado, o acesso já está liberado.' };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
+    if (demoModeAtivo) return { error: 'Modo demonstração: cadastro desabilitado.' };
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -59,12 +82,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    if (demoModeAtivo) return; // nada a encerrar, não existe sessão real
     await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider
-      value={{ session, user: session?.user ?? null, profile, loading, signIn, signUp, signOut }}
+      value={{ session, user: session?.user ?? null, profile, loading, demoModeAtivo, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>

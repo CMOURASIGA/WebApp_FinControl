@@ -45,6 +45,23 @@ Este é um sistema de controle da **empresa** — nenhuma tela ou tabela guarda 
    ```
 6. Em **Authentication → Providers**, deixe e-mail/senha habilitado (é o método usado pela tela de login). Se quiser pular a confirmação por e-mail em desenvolvimento, desative "Confirm email" nas configurações de Auth.
 
+### Raias de demo/desenvolvimento sem login (`VITE_SKIP_AUTH`)
+
+Enquanto não há Supabase provisionado (ou para apresentar o sistema sem
+pedir credencial), defina `VITE_SKIP_AUTH=true` no ambiente da branch
+`demo/7finance` (ou local, em `.env.local`). Isso pula a tela de login e
+libera o app inteiro com um perfil sintético de papel `admin`.
+
+**Nunca definir essa variável no ambiente de produção** (branch `main`) —
+o padrão sem a variável definida é sempre exigir login real via Supabase
+Auth, então esquecer de configurá-la em produção é o caso seguro; é preciso
+setar explicitamente `true` em Preview/branch para ativar o atalho.
+
+Note que isso só remove a exigência de login — chamadas ao Supabase para
+buscar/gravar dados continuam reais. Sem um projeto provisionado, as telas
+abrem mas os dados não carregam (estados de erro/loading já tratados nas
+páginas).
+
 ## Rodando localmente
 
 ```bash
