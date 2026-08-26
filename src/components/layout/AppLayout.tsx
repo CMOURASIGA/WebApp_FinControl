@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBrand } from '../../contexts/BrandContext';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import type { Capability } from '../../lib/capabilities';
+import { OrionLauncher } from '../orion/OrionLauncher';
 
 const NAV_ITEMS: Array<{ section: string; to: string; label: string; icon: typeof LayoutDashboard; end?: boolean; capability: Capability }> = [
   { section: 'Visão financeira', to: '/', label: 'Visão Geral', icon: LayoutDashboard, end: true, capability: 'view_dashboard' },
@@ -45,6 +46,7 @@ export const AppLayout: React.FC = () => {
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-6"><div className="flex items-center gap-3"><button className="rounded-xl border border-slate-200 p-2 text-slate-600 md:hidden" onClick={() => setMenuAberto(true)}><Menu className="h-5 w-5" /></button><div><p className="brand-highlight-text text-[10px] font-black uppercase tracking-[0.2em]">Workspace financeiro</p><h1 className="text-base font-semibold text-slate-900">{titulo}</h1></div></div><span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 sm:inline-flex"><span className="h-2 w-2 rounded-full bg-emerald-500" />Operação online</span></header>
         <main className="flex-1 overflow-x-hidden p-4 md:p-6"><div className="mx-auto max-w-7xl"><Outlet /></div></main>
       </div>
+      <OrionLauncher />
     </div>
   );
 };

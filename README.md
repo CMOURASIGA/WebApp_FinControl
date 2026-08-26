@@ -31,7 +31,7 @@ Este é um sistema de controle da **empresa** — nenhuma tela ou tabela guarda 
 > nada além da ordem numérica.
 
 1. Crie um projeto em [supabase.com](https://supabase.com) — dedicado ao 7Finance (não reaproveitar projeto de outro produto da suíte).
-2. No SQL Editor do projeto (ou via `supabase db push` com a CLI), rode **em ordem numérica, todas** as migrations de [`supabase/migrations`](supabase/migrations) — hoje `0001` até `0013`. Cada uma parte de onde a anterior parou; não pule nenhuma.
+2. No SQL Editor do projeto (ou via `supabase db push` com a CLI), rode **em ordem numérica, todas** as migrations de [`supabase/migrations`](supabase/migrations) — hoje `0001` até `0014`. Cada uma parte de onde a anterior parou; não pule nenhuma.
 3. Rode os dois scripts de isolamento em [`supabase/tests`](supabase/tests) no mesmo projeto:
    - [`0012_conta_corrente_isolamento.sql`](supabase/tests/0012_conta_corrente_isolamento.sql) — conta corrente societária (admin/financeiro veem tudo, cada sócio só vê o próprio extrato, consulta não vê nenhum).
    - [`0013_dados_societarios_isolamento.sql`](supabase/tests/0013_dados_societarios_isolamento.sql) — CPF/chave PIX/e-mail/telefone em `socios` e valor investido em `investimentos` (mesma regra: admin/financeiro veem tudo, cada sócio só o próprio, consulta não vê nada individual — mas todo perfil ativo continua lendo nome/tipo/status de todos via a view `socios_diretorio`).
@@ -113,8 +113,12 @@ src/
 
 O `motorCalculo.ts` é o núcleo do sistema: resolve qual parâmetro vale em uma data (`resolveVigente`), monta o snapshot gravado em cada receita nova, calcula o resultado de um projeto (rateando custos/despesas entre as receitas e aplicando a regra de distribuição de cada uma) e roda o simulador tributário — tudo com os mesmos parâmetros passados por fora, nunca lidos de uma constante.
 
+## Orion (IA financeira)
+
+Ver `supabase/functions/orion/README.md` para arquitetura, variáveis de ambiente, limites de segurança e o que falta validar antes do deploy real. Resumo: Frontend → Edge Function `orion` (autenticação + capability `use_orion` + tools controladas) → OpenAI. A chave da OpenAI só existe como secret do projeto Supabase (`OPENAI_API_KEY`), nunca em variável `VITE_*`. V1 é somente leitura/análise/simulação — nenhuma tool grava dado nenhum.
+
 ## Escopo desta versão (MVP)
 
-Implementado: Dashboard executivo, Parâmetros Configuráveis, Cadastro de Sócios, Projetos + Receitas + Custos diretos, Despesas/Contas a Pagar, Conta Corrente dos Sócios, Investimentos + ROI, Simulador Tributário, Fechamento Mensal + DRE gerencial, MRR/ARR.
+Implementado: Dashboard executivo, Parâmetros Configuráveis, Cadastro de Sócios, Projetos + Receitas + Custos diretos, Despesas/Contas a Pagar, Conta Corrente dos Sócios, Investimentos + ROI, Simulador Tributário, Fechamento Mensal + DRE gerencial, MRR/ARR, Orion (IA financeira, leitura/análise/simulação).
 
 Deixado para uma fase seguinte: integrações bancárias automáticas, projeção de caixa de 12 meses, simulador de novo negócio com scoring automático, alertas proativos, reabertura de fechamento. Deliberadamente fora de escopo: qualquer financeiro pessoal de sócio (meta de renda, reserva pessoal) — este é um sistema de controle da empresa.

@@ -15,6 +15,7 @@ import type {
   CustoProjeto,
   Despesa,
   ParametroTributario,
+  Projeto,
   Receita,
   RegraDistribuicao,
   SplitSocio,
@@ -186,6 +187,74 @@ export function consolidarResultados(resultados: ResultadoProjeto[]): ResultadoP
     resultadoLiquido: round2(sum(resultados.map((r) => r.resultadoLiquido))),
     valorEmpresa: round2(sum(resultados.map((r) => r.valorEmpresa))),
     porSocio,
+  };
+}
+
+export interface DREPeriodo {
+  periodoInicio: string;
+  periodoFim: string;
+  porProjeto: { projeto: Projeto; resultado: ResultadoProjeto }[];
+  consolidadoProjetos: ResultadoProjeto;
+  despesasCorporativas: number;
+  despesasCorporativasFixas: number;
+  despesasVariaveisTotais: number;
+  valorEmpresaLiquido: number; // valorEmpresa dos projetos - despesas corporativas
+}
+
+/**
+ * Consolida receitas + custos + despesas de um período em uma DRE
+ * gerencial: por projeto e da empresa como um todo. Função pura — quem
+ * busca os dados (frontend via relatoriosService, ou a Edge Function da
+ * Orion) só precisa trazer as linhas do período; o cálculo mora aqui,
+ * uma única vez, para os dois lados nunca divergirem.
+ */
+export function montarDREDeDados(
+  periodoInicio: string,
+  periodoFim: string,
+  projetos: Projeto[],
+  receitas: Receita[],
+  custos: CustoProjeto[],
+  despesas: Despesa[]
+): DREPeriodo {
+  const despesasValidas = despesas.filter((d) => d.status !== 'cancelado');
+  const custosValidos = custos.filter((c) => c.status !== 'cancelado');
+  // A natureza da despesa é definida pelo tipo. O vínculo com projeto é
+  // usado como proteção adicional para dados antigos ou incompletos.
+  const despesasCorporativas = despesasValidas.filter((d) => d.tipo !== 'projeto' || !d.projeto_id);
+  const despesasPorProjeto = despesasValidas.filter((d) => d.tipo === 'projeto' && Boolean(d.projeto_id));
+
+  const porProjeto: { projeto: Projeto; resultado: ResultadoProjeto }[] = [];
+
+  for (const projeto of projetos) {
+    const receitasDoProjeto = receitas.filter((r) => r.projeto_id === projeto.id);
+    const custosDoProjeto = custosValidos.filter((c) => c.projeto_id === projeto.id);
+    const despesasDoProjeto = despesasPorProjeto.filter((d) => d.projeto_id === projeto.id);
+
+    if (receitasDoProjeto.length === 0 && custosDoProjeto.length === 0 && despesasDoProjeto.length === 0) continue;
+
+    const resultado = calcularResultadoProjeto(receitasDoProjeto, custosDoProjeto, despesasDoProjeto);
+    porProjeto.push({ projeto, resultado });
+  }
+
+  const consolidadoProjetos = consolidarResultados(porProjeto.map((p) => p.resultado));
+  const totalDespesasCorporativas = round2(despesasCorporativas.reduce((acc, d) => acc + d.valor, 0));
+  const despesasCorporativasFixas = round2(despesasCorporativas.filter((d) => d.tipo === 'fixa').reduce((acc, d) => acc + d.valor, 0));
+  const despesasVariaveisTotais = round2(
+    custosValidos.reduce((acc, c) => acc + c.valor, 0) +
+    despesasPorProjeto.reduce((acc, d) => acc + d.valor, 0) +
+    despesasCorporativas.filter((d) => d.tipo !== 'fixa').reduce((acc, d) => acc + d.valor, 0)
+  );
+  const valorEmpresaLiquido = round2(consolidadoProjetos.valorEmpresa - totalDespesasCorporativas);
+
+  return {
+    periodoInicio,
+    periodoFim,
+    porProjeto,
+    consolidadoProjetos,
+    despesasCorporativas: totalDespesasCorporativas,
+    despesasCorporativasFixas,
+    despesasVariaveisTotais,
+    valorEmpresaLiquido,
   };
 }
 
