@@ -9,13 +9,13 @@ import { sociosService } from '../services/sociosService';
 import { parametrosService } from '../services/parametrosService';
 import { resolveVigente, simularCenario } from '../lib/motorCalculo';
 import { formatCurrency, hoje } from '../utils/formatters';
-import type { Socio, SplitSocio } from '../types/database';
+import type { SocioDiretorio, SplitSocio } from '../types/database';
 
 const ALIQUOTAS_SUGERIDAS = [6, 8, 10, 12, 15];
 
 export const SimuladorPage: React.FC = () => {
   const { can } = useCapabilities();
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [receitaBruta, setReceitaBruta] = useState('19000');
   const [aliquota, setAliquota] = useState(6);
   const [custos, setCustos] = useState('1500');
@@ -24,7 +24,7 @@ export const SimuladorPage: React.FC = () => {
   const [splits, setSplits] = useState<SplitSocio[]>([]);
 
   useEffect(() => {
-    Promise.all([sociosService.listarAtivos(), parametrosService.listarRegrasDistribuicao(), parametrosService.listarTodosTributarios()]).then(
+    Promise.all([sociosService.listarDiretorioAtivos(), parametrosService.listarRegrasDistribuicao(), parametrosService.listarTodosTributarios()]).then(
       ([soc, regras, tributos]) => {
         setSocios(soc);
         const regraDefault = resolveVigente(

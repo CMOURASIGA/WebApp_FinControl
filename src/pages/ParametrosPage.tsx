@@ -15,7 +15,7 @@ import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
 import { resolveVigente } from '../lib/motorCalculo';
 import { formatDate, hoje } from '../utils/formatters';
-import type { ParametroTributario, Socio, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { ParametroTributario, SocioDiretorio, RegraDistribuicao, SplitSocio } from '../types/database';
 import { DEFAULT_BRAND } from '../lib/brand';
 import { extrairCoresLogo } from '../lib/extrairCoresLogo';
 
@@ -25,7 +25,7 @@ export const ParametrosPage: React.FC = () => {
   const { brand, refreshBrand } = useBrand();
   const [tributarios, setTributarios] = useState<ParametroTributario[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [whiteLabelAberto, setWhiteLabelAberto] = useState(false);
@@ -70,7 +70,7 @@ export const ParametrosPage: React.FC = () => {
     const [t, r, s] = await Promise.all([
       parametrosService.listarTodosTributarios(),
       parametrosService.listarRegrasDistribuicao(),
-      sociosService.listarAtivos(),
+      sociosService.listarDiretorioAtivos(),
     ]);
     setTributarios(t);
     setRegras(r);

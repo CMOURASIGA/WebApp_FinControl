@@ -1,10 +1,10 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
 import { Field, Input, Select } from './ui/Input';
-import type { Socio, SplitSocio } from '../types/database';
+import type { SocioDiretorio, SplitSocio } from '../types/database';
 
 interface SplitSociosEditorProps {
-  socios: Socio[];
+  socios: SocioDiretorio[];
   percentualEmpresa: number;
   onChangePercentualEmpresa: (valor: number) => void;
   splits: SplitSocio[];

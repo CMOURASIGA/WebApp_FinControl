@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCapabilities } from '../hooks/useCapabilities';
 import { clientesService, projetosService } from '../services/projetosService';
 import { sociosService } from '../services/sociosService';
-import type { Cliente, Projeto, Socio } from '../types/database';
+import type { Cliente, Projeto, SocioDiretorio } from '../types/database';
 
 const TIPO_LABEL: Record<Projeto['tipo'], string> = {
   servico: 'Serviço',
@@ -26,7 +26,7 @@ export const ProjetosPage: React.FC = () => {
   const { can } = useCapabilities();
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [drawerAberto, setDrawerAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ export const ProjetosPage: React.FC = () => {
   const [responsavelExecucaoSocioId, setResponsavelExecucaoSocioId] = useState('');
 
   const carregar = async () => {
-    const [p, c, s] = await Promise.all([projetosService.listar(), clientesService.listar(), sociosService.listarAtivos()]);
+    const [p, c, s] = await Promise.all([projetosService.listar(), clientesService.listar(), sociosService.listarDiretorioAtivos()]);
     setProjetos(p);
     setClientes(c);
     setSocios(s);

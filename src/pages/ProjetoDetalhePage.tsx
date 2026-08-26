@@ -19,7 +19,7 @@ import { parametrosService } from '../services/parametrosService';
 import { sociosService } from '../services/sociosService';
 import { calcularResultadoProjeto, resolveRegraDistribuicaoVigente } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { CustoProjeto, Despesa, FinanceiroHistorico, Socio, Projeto, Receita, ReceitaHistorico, RegraDistribuicao, SplitSocio } from '../types/database';
+import type { CustoProjeto, Despesa, FinanceiroHistorico, SocioDiretorio, Projeto, Receita, ReceitaHistorico, RegraDistribuicao, SplitSocio } from '../types/database';
 
 const STATUS_TONE: Record<Receita['status'], 'success' | 'warning' | 'danger' | 'neutral'> = {
   previsto: 'neutral',
@@ -39,7 +39,7 @@ export const ProjetoDetalhePage: React.FC = () => {
   const [custos, setCustos] = useState<CustoProjeto[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [regras, setRegras] = useState<RegraDistribuicao[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = async () => {
@@ -50,7 +50,7 @@ export const ProjetoDetalhePage: React.FC = () => {
       custosProjetoService.listarPorProjeto(id),
       despesasService.listar(),
       parametrosService.listarRegrasDistribuicao(),
-      sociosService.listarAtivos(),
+      sociosService.listarDiretorioAtivos(),
     ]);
     setProjeto(proj);
     setReceitas(rec);

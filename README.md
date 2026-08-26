@@ -31,8 +31,12 @@ Este é um sistema de controle da **empresa** — nenhuma tela ou tabela guarda 
 > nada além da ordem numérica.
 
 1. Crie um projeto em [supabase.com](https://supabase.com) — dedicado ao 7Finance (não reaproveitar projeto de outro produto da suíte).
-2. No SQL Editor do projeto (ou via `supabase db push` com a CLI), rode **em ordem numérica, todas** as migrations de [`supabase/migrations`](supabase/migrations) — hoje `0001` até `0012`. Cada uma parte de onde a anterior parou; não pule nenhuma.
-3. Rode [`supabase/tests/0012_conta_corrente_isolamento.sql`](supabase/tests/0012_conta_corrente_isolamento.sql) no mesmo projeto para confirmar o isolamento de conta corrente entre sócios (admin/financeiro veem tudo, cada sócio só vê o próprio extrato, consulta não vê nenhum). O script cria fixtures, valida e desfaz tudo com `ROLLBACK` — não precisa limpar nada depois.
+2. No SQL Editor do projeto (ou via `supabase db push` com a CLI), rode **em ordem numérica, todas** as migrations de [`supabase/migrations`](supabase/migrations) — hoje `0001` até `0013`. Cada uma parte de onde a anterior parou; não pule nenhuma.
+3. Rode os dois scripts de isolamento em [`supabase/tests`](supabase/tests) no mesmo projeto:
+   - [`0012_conta_corrente_isolamento.sql`](supabase/tests/0012_conta_corrente_isolamento.sql) — conta corrente societária (admin/financeiro veem tudo, cada sócio só vê o próprio extrato, consulta não vê nenhum).
+   - [`0013_dados_societarios_isolamento.sql`](supabase/tests/0013_dados_societarios_isolamento.sql) — CPF/chave PIX/e-mail/telefone em `socios` e valor investido em `investimentos` (mesma regra: admin/financeiro veem tudo, cada sócio só o próprio, consulta não vê nada individual — mas todo perfil ativo continua lendo nome/tipo/status de todos via a view `socios_diretorio`).
+   
+   Ambos criam fixtures, validam e desfazem tudo com `ROLLBACK` — não precisa limpar nada depois.
 4. Em **Project Settings → API**, copie a `Project URL` e a chave `anon public`.
 5. Copie `.env.example` para `.env.local` e preencha:
    ```

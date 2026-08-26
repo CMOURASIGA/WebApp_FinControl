@@ -77,20 +77,72 @@ O gap #2 desta lista foi corrigido por
    `AUTHORIZATION.md` (seção 6) já aponta para o desenho multiempresa.
    Recomenda-se tratar isso junto da Fase 6 (multiempresa), quando as
    tabelas de capabilities por tenant forem desenhadas de qualquer forma.
-2. ~~`view_partner_account` não tem contrapartida em RLS~~ — **resolvido**,
-   ver "Atualização — gap de conta corrente fechado (migration 0012)"
-   acima. Continua em aberto, e fora do escopo de 0012 por decisão
-   deliberada, o mesmo tipo de exposição em `socios` (CPF/chave
-   PIX/telefone legíveis por qualquer `usuario_ativo()`) e em
-   `investimentos.socio_id` — se a operação quiser o mesmo isolamento
-   ali, é uma migration separada, no mesmo padrão de
-   `pode_ver_conta_corrente`.
+2. ~~`view_partner_account` não tem contrapartida em RLS~~ — **resolvido**
+   na migration `0012` (conta corrente) e na `0013` (CPF/chave PIX/e-mail/
+   telefone em `socios`, valor investido em `investimentos` e
+   `investimento_historico`). Ver "Etapa 4A — segurança societária"
+   abaixo. Nenhuma pendência conhecida restante nessa frente.
 3. **`reopen_period` sem RPC.** Não há função de reabertura de
    competência fechada. Antes de expor qualquer botão de "reabrir mês" no
    frontend, é obrigatório criar a RPC com auditoria e motivo, conforme
    `docs/00-product/PRODUCT_SPEC.md` §4.6.
 
-Nenhuma migration antiga foi alterada — `0012` é aditiva. Os gaps
-restantes acima são material para a próxima rodada de hardening (Fase
-5) ou para o desenho de multiempresa (Fase 6); nenhum deles amplia
+Nenhuma migration antiga foi alterada — `0012` e `0013` são aditivas. Os
+gaps restantes acima são material para a próxima rodada de hardening
+(Fase 5) ou para o desenho de multiempresa (Fase 6); nenhum deles amplia
 acesso além do que já existia antes desta implementação.
+
+## Etapa 4A — segurança societária (auth.users → profiles → socios)
+
+Pré-requisito de segurança levantado antes de iniciar a Orion (a Orion
+vai poder consultar dados financeiros/societários, então essa base
+precisava estar sólida primeiro).
+
+**Modelagem confirmada (sem suposição por nome/CPF/e-mail):**
+`auth.uid() = profiles.id` (FK 1:1 com `auth.users`) e
+`socios.profile_id uuid unique references profiles(id)` — vínculo já
+existente desde `0004_operacao_financeira_segura.sql`, reaproveitado
+integralmente.
+
+**Gap fechado pela migration `0013_protecao_dados_societarios_individuais.sql`:**
+`socios_select` e `investimentos_select` (e `investimento_historico_select`)
+liberavam a linha inteira para qualquer `usuario_ativo()` desde a `0004`
+— ou seja, CPF, chave PIX, e-mail e telefone de qualquer sócio, e o
+valor investido por qualquer sócio, eram legíveis via API/Supabase
+direto por um perfil `socio` olhando dado de outro sócio, ou por
+`consulta`.
+
+**Regra aplicada:**
+- `socios` (linha completa, com CPF/PIX) → admin, financeiro ou o
+  próprio sócio.
+- View nova `socios_diretorio` (`id, nome, tipo, ativo, data_entrada,
+  data_saida`, sem colunas sensíveis) → qualquer perfil ativo — mantém
+  splits, seletor de sócio em projeto e "por sócio" na DRE funcionando
+  para todo mundo, sem vazar CPF/PIX.
+- `investimentos`/`investimento_historico` → admin, financeiro,
+  investimentos do tipo `empresa` (capital corporativo, não individual),
+  ou o próprio sócio investidor.
+
+**Decisão de produto registrada:** como consequência, o ROI/capital
+agregado por projeto que soma investimentos de vários sócios (Dashboard,
+`InvestimentosPage`) deixa de ficar completo para `socio`/`consulta`
+sem `manage_investments` — eles só veem o que é deles + o que é da
+empresa. Se o produto decidir no futuro que esse agregado deve ficar
+visível a todos sem expor o investidor individual, a solução é uma
+function agregadora (soma sem expor linha), não a reversão da `0013`.
+
+**Frontend ajustado:** `sociosService` ganhou `listarDiretorioAtivos()`/
+`listarDiretorioTodos()` (lendo a view). Todas as telas que só
+precisavam resolver "nome de um id de sócio" (Simulador, Parâmetros,
+Investimentos, Dashboard, Projetos, Projeto/detalhe, Fechamento,
+`SplitSociosEditor`) passaram a usá-las — nenhuma delas lia CPF/PIX/
+e-mail/telefone, confirmado por busca no código antes da mudança.
+Só `SociosPage` (cadastro) continua lendo `socios` completo, exatamente
+onde isso é necessário e onde a capability `manage_partners` já é
+exigida no frontend (e agora também no banco).
+
+**Testes de isolamento:** `supabase/tests/0013_dados_societarios_isolamento.sql`,
+mesmo padrão do `0012` (fixtures + `ROLLBACK`). Ainda não executado
+contra um banco real pelo mesmo motivo da `0012`: **o 7Finance não tem
+projeto Supabase próprio provisionado nesta data.** Ver checklist no
+README.

@@ -17,7 +17,7 @@ import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
 import { calcularARR, calcularMRR, calcularBreakEven, calcularResultadoProjeto, calcularROI } from '../lib/motorCalculo';
 import { formatCurrency, mesAtual, primeiroDiaDoMes, ultimoDiaDoMes, nomeDoMes, hoje } from '../utils/formatters';
-import type { Assinatura, Socio, SocioLancamento } from '../types/database';
+import type { Assinatura, SocioDiretorio, SocioLancamento } from '../types/database';
 
 export const DashboardPage: React.FC = () => {
   const { can } = useCapabilities();
@@ -25,7 +25,7 @@ export const DashboardPage: React.FC = () => {
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [dreRealizada, setDreRealizada] = useState<DREPeriodo | null>(null);
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [lancamentos, setLancamentos] = useState<SocioLancamento[]>([]);
   const [reservaEmpresa, setReservaEmpresa] = useState(0);
   const [resumoROI, setResumoROI] = useState({ capital: 0, resultado: 0, roi: 0, projetos: 0 });
@@ -44,7 +44,7 @@ export const DashboardPage: React.FC = () => {
       relatoriosService.montarDRE(inicio, fim),
       relatoriosService.montarDRE(inicio, fim, true),
       assinaturasService.listar(),
-      sociosService.listarAtivos(),
+      sociosService.listarDiretorioAtivos(),
       socioService.listarTodos(),
       reservaEmpresaService.listar(),
       carregarResumoROI(),

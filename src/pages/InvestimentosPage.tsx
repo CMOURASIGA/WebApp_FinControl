@@ -17,7 +17,7 @@ import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
 import { calcularResultadoProjeto, calcularROI, calcularPaybackMeses } from '../lib/motorCalculo';
 import { formatCurrency, formatDate, hoje } from '../utils/formatters';
-import type { Investimento, InvestimentoHistorico, Socio, Projeto } from '../types/database';
+import type { Investimento, InvestimentoHistorico, SocioDiretorio, Projeto } from '../types/database';
 
 type EditorInvestimento = {
   investidorTipo: Investimento['investidor_tipo']; socioId: string; projetoId: string; valor: string; data: string;
@@ -30,7 +30,7 @@ export const InvestimentosPage: React.FC = () => {
   const { can } = useCapabilities();
   const [investimentos, setInvestimentos] = useState<Investimento[]>([]);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [roiPorProjeto, setRoiPorProjeto] = useState<Record<string, { investido: number; retorno: number; roi: number; payback: number | null; meta: number | null }>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [editando, setEditando] = useState<Investimento | null>(null);
@@ -54,7 +54,7 @@ export const InvestimentosPage: React.FC = () => {
   const [consideradoNoResultado, setConsideradoNoResultado] = useState(false);
 
   const carregar = async () => {
-    const [inv, proj, soc] = await Promise.all([investimentosService.listar(), projetosService.listar(), sociosService.listarAtivos()]);
+    const [inv, proj, soc] = await Promise.all([investimentosService.listar(), projetosService.listar(), sociosService.listarDiretorioAtivos()]);
     setInvestimentos(inv);
     setProjetos(proj);
     setSocios(soc);

@@ -16,7 +16,7 @@ import { sociosService } from '../services/sociosService';
 import { receitasService } from '../services/receitasService';
 import { custosProjetoService, despesasService } from '../services/despesasService';
 import { formatCurrency, mesAtual, nomeDoMes, primeiroDiaDoMes, ultimoDiaDoMes } from '../utils/formatters';
-import type { FechamentoMensal, Socio } from '../types/database';
+import type { FechamentoMensal, SocioDiretorio } from '../types/database';
 
 interface Inconsistencia {
   nivel: 'bloqueio' | 'atencao';
@@ -36,7 +36,7 @@ export const FechamentoPage: React.FC = () => {
   const [dre, setDre] = useState<DREPeriodo | null>(null);
   const [fechamentoAtual, setFechamentoAtual] = useState<FechamentoMensal | null>(null);
   const [historico, setHistorico] = useState<FechamentoMensal[]>([]);
-  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socios, setSocios] = useState<SocioDiretorio[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export const FechamentoPage: React.FC = () => {
         relatoriosService.montarDRE(inicio, fim),
         fechamentoService.obterPorCompetencia(mes),
         fechamentoService.listar(),
-        sociosService.listarTodos(),
+        sociosService.listarDiretorioTodos(),
       ]);
       setDre(dreData);
       setFechamentoAtual(fechData);
@@ -94,7 +94,7 @@ export const FechamentoPage: React.FC = () => {
       const [dreRealizado, existente, sociosAtuais, receitasPeriodo, custosPeriodo, despesasPeriodo] = await Promise.all([
         relatoriosService.montarDRE(inicio, fim, true),
         fechamentoService.obterPorCompetencia(mes),
-        sociosService.listarTodos(),
+        sociosService.listarDiretorioTodos(),
         receitasService.listarPorPeriodo(inicio, fim),
         custosProjetoService.listarPorPeriodo(inicio, fim),
         despesasService.listarPorPeriodo(inicio, fim),

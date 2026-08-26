@@ -51,6 +51,24 @@ export interface Socio {
   updated_at: string;
 }
 
+/**
+ * Projeção segura de `Socio`, sem CPF/chave PIX/e-mail/telefone —
+ * espelha a view `public.socios_diretorio` (migration 0013). Use esta
+ * forma em qualquer tela que só precisa resolver "de quem é este id"
+ * (splits, seletor de sócio em projeto, "por sócio" na DRE etc.).
+ * Só a tela de gestão de sócios (SociosPage) precisa do `Socio`
+ * completo, e só quando o profile logado tem `manage_partners` — a
+ * própria RLS de `socios` já reforça isso no banco.
+ */
+export interface SocioDiretorio {
+  id: string;
+  nome: string;
+  tipo: 'socio' | 'investidor';
+  ativo: boolean;
+  data_entrada: string;
+  data_saida: string | null;
+}
+
 export interface Cliente {
   id: string;
   nome: string;
