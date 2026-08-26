@@ -17,14 +17,27 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Raia de demonstração/desenvolvimento sem Supabase provisionado: quando
-// VITE_SKIP_AUTH=true, pula a tela de login e libera o app com um perfil
-// sintético (papel admin, todas as capabilities). Nunca deve ser setada no
-// ambiente de produção — o default (variável ausente) é sempre exigir
-// login real, então esquecer de configurar em produção é o caso seguro.
+// VITE_SKIP_AUTH=true, pula a tela de login e libera o app com identidade
+// sintética de administrador. Isso permite que os fluxos funcionais que
+// dependem de user.id também operem sobre os mocks locais.
 const demoModeAtivo = import.meta.env.VITE_SKIP_AUTH === 'true';
 
+const DEMO_USER_ID = 'demo-user-admin';
+
+const USUARIO_DEMO: User = {
+  id: DEMO_USER_ID,
+  aud: 'authenticated',
+  role: 'authenticated',
+  email: 'demo@7finance.local',
+  app_metadata: {},
+  user_metadata: { nome: 'Visitante da demonstração' },
+  identities: [],
+  created_at: new Date(0).toISOString(),
+  updated_at: new Date(0).toISOString(),
+};
+
 const PERFIL_DEMO: Profile = {
-  id: 'demo-sem-login',
+  id: DEMO_USER_ID,
   nome: 'Visitante (modo demonstração)',
   cpf: null,
   chave_pix: null,
@@ -86,9 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const currentUser = demoModeAtivo ? USUARIO_DEMO : session?.user ?? null;
+
   return (
     <AuthContext.Provider
-      value={{ session, user: session?.user ?? null, profile, loading, demoModeAtivo, signIn, signUp, signOut }}
+      value={{ session, user: currentUser, profile, loading, demoModeAtivo, signIn, signUp, signOut }}
     >
       {children}
     </AuthContext.Provider>
