@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "vercelDeployMarker": "whitelabel-2026-08-27",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
