@@ -88,15 +88,15 @@ export const AppLayout: React.FC = () => {
       )}
 
       <aside className={`sidebar-shell fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col overflow-hidden transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${menuAberto ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="relative border-b border-white/15 px-5 pb-6 pt-5">
-          <div className="flex h-[108px] w-full items-center justify-center overflow-hidden rounded-xl bg-white px-2 py-2 shadow-sm">
-            <img src={brand.logo_url} alt={brand.company_name} className="max-h-[92px] w-[96%] object-contain object-center" />
+        <div className="relative border-b border-white/15 px-3 pb-6 pt-4">
+          <div className="flex h-[144px] w-full items-center justify-center overflow-hidden rounded-xl bg-white px-1 py-1 shadow-sm">
+            <img src={brand.logo_url} alt={brand.company_name} className="max-h-[132px] w-[99%] object-contain object-center" />
           </div>
           <button className="absolute right-3 top-3 rounded-full p-2 text-white/80 hover:bg-white/10 md:hidden" onClick={() => setMenuAberto(false)} aria-label="Fechar menu">
             <X className="h-5 w-5" />
           </button>
 
-          <div className="mt-6">
+          <div className="mt-6 px-2">
             <div className="flex items-center gap-2">
               <p className="brand-highlight-text text-[11px] font-black uppercase tracking-[0.22em]">{brand.product_name}</p>
               <span className="rounded-md border border-amber-300/50 bg-amber-300/15 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-200">Demo</span>
