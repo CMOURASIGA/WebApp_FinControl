@@ -97,11 +97,11 @@ export const AppLayout: React.FC = () => {
         }`}
       >
         <div className="relative border-b border-white/15 px-5 pb-5 pt-5">
-          <div className="flex h-14 w-full items-center justify-start overflow-hidden rounded-xl bg-white px-3 py-2 shadow-sm">
+          <div className="flex h-16 w-full items-center justify-center overflow-hidden rounded-xl bg-white px-1 py-1 shadow-sm">
             <img
               src={brand.logo_url}
               alt={brand.company_name}
-              className="max-h-10 max-w-full object-contain object-left"
+              className="h-full w-[94%] object-contain object-center"
             />
           </div>
           <button
