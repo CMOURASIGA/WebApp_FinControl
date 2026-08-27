@@ -57,25 +57,15 @@ export const AppLayout: React.FC = () => {
   const [confirmarReset, setConfirmarReset] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const titulo = pathname.startsWith('/projetos/')
-    ? 'Detalhes do Projeto'
-    : TITULOS[pathname] ?? 'Workspace financeiro';
+  const titulo = pathname.startsWith('/projetos/') ? 'Detalhes do Projeto' : TITULOS[pathname] ?? 'Workspace financeiro';
   const sections = Array.from(new Set(NAV_ITEMS.map((item) => item.section)));
   const nomeUsuario = profile?.nome ?? 'Usuário';
   const papelUsuario = profile?.papel ?? 'usuário';
-  const iniciais = nomeUsuario
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0])
-    .join('')
-    .toUpperCase();
+  const iniciais = nomeUsuario.split(' ').filter(Boolean).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setUserMenuAberto(false);
-      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) setUserMenuAberto(false);
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -83,18 +73,14 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)] md:flex">
-      {menuAberto && (
-        <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-slate-950/45 md:hidden" onClick={() => setMenuAberto(false)} />
-      )}
+      {menuAberto && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-slate-950/45 md:hidden" onClick={() => setMenuAberto(false)} />}
 
       <aside className={`sidebar-shell fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col overflow-hidden transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${menuAberto ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="relative border-b border-white/15 px-3 pb-6 pt-4">
-          <div className="flex h-[144px] w-full items-center justify-center overflow-hidden rounded-xl bg-white px-1 py-1 shadow-sm">
-            <img src={brand.logo_url} alt={brand.company_name} className="max-h-[132px] w-[99%] object-contain object-center" />
+          <div className="flex h-[144px] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200/90 bg-white px-1 py-1 shadow-sm ring-1 ring-black/5">
+            <img src={brand.logo_url} alt={brand.company_name} className="max-h-[128px] max-w-[92%] object-contain object-center" />
           </div>
-          <button className="absolute right-3 top-3 rounded-full p-2 text-white/80 hover:bg-white/10 md:hidden" onClick={() => setMenuAberto(false)} aria-label="Fechar menu">
-            <X className="h-5 w-5" />
-          </button>
+          <button className="absolute right-3 top-3 rounded-full p-2 text-white/80 hover:bg-white/10 md:hidden" onClick={() => setMenuAberto(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></button>
 
           <div className="mt-6 px-2">
             <div className="flex items-center gap-2">
