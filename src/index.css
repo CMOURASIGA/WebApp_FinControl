@@ -36,28 +36,32 @@ body {
   border-radius: 0 0 22px 22px;
   border-bottom: 1px solid #dce6ef;
   background: white;
-  padding: 12px 24px;
+  padding: 8px 14px;
   overflow: hidden;
 }
 
 .brand-logo-frame {
   display: flex;
+  width: 100%;
+  max-width: 228px;
+  height: 92px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   background: white;
+  padding: 4px 8px;
   box-shadow: 0 7px 20px rgba(15, 43, 65, 0.08);
 }
 
 .sidebar-brand-logo {
   display: block;
   width: auto;
-  max-width: 100%;
+  max-width: 88%;
   height: auto;
-  max-height: 88px;
-  border-radius: 16px;
+  max-height: 82px;
+  border-radius: 14px;
   object-fit: contain;
 }
 
